@@ -9,6 +9,8 @@ import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +40,8 @@ import java.util.ServiceLoader;
  */
 @Configuration
 public class McpToolsConfiguration {
+
+    private static final Logger log = LoggerFactory.getLogger("com.tokensaver.mcp");
 
     private static final String CURL_GUIDANCE = """
             tokensaver provides deterministic-task tools so you don't have to write \
@@ -311,12 +315,48 @@ public class McpToolsConfiguration {
 
     private McpServerFeatures.SyncToolSpecification toolSpec(McpSchema.Tool tool, ToolLogic logic) {
         return new McpServerFeatures.SyncToolSpecification(tool, (exchange, request) -> {
+            long start = System.currentTimeMillis();
+            String name = tool.name();
+            log.info("tool call: {} args={}", name, summarizeArgs(request.arguments()));
             try {
-                return McpSchema.CallToolResult.builder().addTextContent(logic.run(request.arguments())).build();
+                String result = logic.run(request.arguments());
+                log.info("tool call ok: {} ({} ms)", name, System.currentTimeMillis() - start);
+                return McpSchema.CallToolResult.builder().addTextContent(result).build();
             } catch (Exception e) {
+                log.warn("tool call failed: {} ({} ms): {}", name, System.currentTimeMillis() - start, e.getMessage());
                 return McpSchema.CallToolResult.builder().isError(true).addTextContent("Error: " + e.getMessage()).build();
             }
         });
+    }
+
+    /** Renders args for logging without dumping large values (e.g. base64 file content) into the log. */
+    private static String summarizeArgs(Map<String, Object> args) {
+        if (args == null || args.isEmpty()) {
+            return "{}";
+        }
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : args.entrySet()) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+            sb.append(entry.getKey()).append("=").append(summarizeValue(entry.getValue()));
+        }
+        return sb.append("}").toString();
+    }
+
+    private static String summarizeValue(Object value) {
+        if (value instanceof String s) {
+            return s.length() > 200 ? "<string, " + s.length() + " chars>" : "\"" + s + "\"";
+        }
+        if (value instanceof List<?> list) {
+            return "<list, " + list.size() + " items>";
+        }
+        if (value instanceof Map<?, ?> map) {
+            return "<object, " + map.size() + " keys>";
+        }
+        return String.valueOf(value);
     }
 
     /** Builds a single-file tool's schema: contentBase64 always required, filename optional unless {@code filenameRequired}. */
