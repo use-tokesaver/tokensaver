@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tokensaver</groupId>
+    <artifactId>tokensaver-parent</artifactId>
+    <version>0.1.0-POC</version>
+    <packaging>pom</packaging>
+    <name>tokensaver-parent</name>
+    <description>Deterministic-task APIs for LLM agents, so agents call an endpoint instead of writing/debugging throwaway scripts</description>
+
+    <!--
+        tokensaver-api is the only deployable: the Spring Boot REST service, which also
+        exposes its functions as native MCP tools over HTTP at /mcp. Users add that URL
+        as a remote MCP connector in their client (Claude, etc.) — no local process or
+        download required, the same way a Google Drive/Gmail connector works.
+    -->
+    <modules>
+        <module>tokensaver-api</module>
+    </modules>
+</project>
