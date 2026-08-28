@@ -43,23 +43,28 @@ public class McpToolsConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger("com.tokensaver.mcp");
 
-    private static final String CURL_GUIDANCE = """
-            tokensaver provides deterministic-task tools so you don't have to write \
-            and debug a throwaway script for common jobs.
+    /** Hard cap on inline base64 file content. Above this, file tools reject the call outright. */
+    private static final int MAX_INLINE_BYTES = 50_000;
 
-            For file-based tools (extract_text, convert_image, ocr, zip_files, unzip_file): \
-            if you have shell/bash access AND the file is larger than a few tens of KB, \
-            do NOT call the tool with base64-encoded content — that forces you to emit \
-            the entire file as output tokens, which is slower and more expensive than \
-            just writing the script this API exists to replace. Instead, run curl \
-            directly against this server's REST endpoint, e.g.:
+    private static final String CURL_GUIDANCE = """
+            IMPORTANT — read this before calling any file-based tool (extract_text, \
+            convert_image, ocr, zip_files, unzip_file):
+
+            Do NOT read a local file and pass its content as base64 to these tools. \
+            That forces you to generate the entire file as output tokens just to make \
+            the call — the exact cost this API exists to avoid. These tools enforce a \
+            hard limit of %d bytes on inline content and will reject anything larger \
+            with an error telling you to use curl instead.
+
+            If you have shell/bash access, always call curl directly against the REST \
+            endpoint instead of the MCP tool, regardless of file size:
               curl -F "file=@/path/to/file.pdf" <this-server-base-url>/api/files/extract-text
-            Only use the MCP tool call with inline base64 when there is no shell \
-            available, or the file is small.
+            Only use the MCP tool's inline-base64 form when there is genuinely no shell \
+            available (e.g. a chat client with no code execution) and the file is small.
 
             For everything else (web_extract, hash_text, base64, convert_data, diff_data), \
-            the MCP tool call is always the right choice — call it directly.
-            """;
+            there's no file content involved — the MCP tool call is always the right choice.
+            """.formatted(MAX_INLINE_BYTES);
 
     private final LoopbackApiClient client;
 
@@ -283,7 +288,7 @@ public class McpToolsConfiguration {
             List<LoopbackApiClient.MultipartPart> parts = new ArrayList<>();
             for (Map<String, Object> file : files) {
                 parts.add(new LoopbackApiClient.MultipartPart(
-                        "files", requireString(file, "filename"), decodeBase64(requireString(file, "contentBase64"))));
+                        "files", requireString(file, "filename"), decodeBase64Checked(requireString(file, "contentBase64"))));
             }
             byte[] zipped = client.postMultipartForBytes("/api/util/zip", null, parts);
             return Base64.getEncoder().encodeToString(zipped);
@@ -375,15 +380,14 @@ public class McpToolsConfiguration {
     }
 
     private String withCurlHint(String description) {
-        return description + " If you have shell access and the file is more than a few tens of KB, "
-                + "prefer curl directly against the matching REST endpoint instead of calling this tool "
-                + "— see this server's MCP instructions.";
+        return "PREFER curl over this tool if you have shell access (see this server's MCP instructions) "
+                + "— content over " + MAX_INLINE_BYTES + " bytes is rejected. " + description;
     }
 
     /** Reads {@code contentBase64} (required) and {@code filename} (optional, falling back to {@code defaultFilename}). */
     private LoopbackApiClient.MultipartPart filePart(Map<String, Object> args, String defaultFilename) {
         String filename = args.get("filename") instanceof String s && !s.isBlank() ? s : defaultFilename;
-        return new LoopbackApiClient.MultipartPart("file", filename, decodeBase64(requireString(args, "contentBase64")));
+        return new LoopbackApiClient.MultipartPart("file", filename, decodeBase64Checked(requireString(args, "contentBase64")));
     }
 
     private static String requireString(Map<String, Object> args, String key) {
@@ -400,6 +404,22 @@ public class McpToolsConfiguration {
         } catch (IllegalArgumentException e) {
             throw new ApiException("contentBase64 is not valid base64: " + e.getMessage(), e);
         }
+    }
+
+    /** Decodes base64 content and rejects it outright if it's over {@link #MAX_INLINE_BYTES} — see this
+     * tool's isError message for why: passing large files inline burns output tokens generating the
+     * base64 in the first place, so the fix is to use curl, not a bigger limit. */
+    private static byte[] decodeBase64Checked(String value) {
+        byte[] content = decodeBase64(value);
+        if (content.length > MAX_INLINE_BYTES) {
+            throw new ApiException(String.format(
+                    "This content is %,d bytes — over the %,d byte limit for inline base64 tool calls. "
+                            + "If you have shell/bash access, run curl directly against this server's matching "
+                            + "REST endpoint instead (e.g. curl -F \"file=@/path/to/file\" <base-url>/api/files/...) "
+                            + "rather than reading the file and re-encoding it yourself.",
+                    content.length, MAX_INLINE_BYTES));
+        }
+        return content;
     }
 
     private static Integer toInteger(Object value) {
