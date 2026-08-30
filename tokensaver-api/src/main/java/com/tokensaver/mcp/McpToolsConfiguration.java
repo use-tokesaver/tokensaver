@@ -11,6 +11,7 @@ import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTrans
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,26 +44,31 @@ public class McpToolsConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger("com.tokensaver.mcp");
 
-    private static final String INSTRUCTIONS = """
-            tokensaver provides deterministic-task tools so you don't have to write \
-            and debug a throwaway script for common jobs.
-
-            File-based operations (extracting text from documents, OCR, image convert, \
-            zip/unzip) are NOT available as tools here — call the REST API directly with \
-            curl instead, e.g.:
-              curl -F "file=@/path/to/file.pdf" <this-server-base-url>/api/files/extract-text
-            Do not attempt to read such a file and pass its content to a tool call; no \
-            such tool is offered, and doing so would just mean generating the file as \
-            output tokens for nothing.
-
-            For everything below, the MCP tool call is always the right choice — call it \
-            directly instead of writing a script or using curl.
-            """;
-
     private final LoopbackApiClient client;
+    private final String instructions;
 
-    public McpToolsConfiguration(LoopbackApiClient client) {
+    public McpToolsConfiguration(
+            LoopbackApiClient client,
+            @Value("${tokensaver.public-base-url:http://localhost:${server.port:8080}}") String publicBaseUrl) {
         this.client = client;
+        this.instructions = """
+                tokensaver provides deterministic-task tools so you don't have to write \
+                and debug a throwaway script for common jobs.
+
+                This server's base URL is: %s
+
+                File-based operations (extracting text from documents, OCR, image convert, \
+                zip/unzip) are NOT available as tools here — call the REST API directly with \
+                curl instead, e.g.:
+                  curl -F "file=@/path/to/file.pdf" %s/api/files/extract-text
+                Do not probe for a health-check endpoint or otherwise try to discover the base \
+                URL first — it is given above. Do not attempt to read such a file and pass its \
+                content to a tool call; no such tool is offered, and doing so would just mean \
+                generating the file as output tokens for nothing.
+
+                For everything below, the MCP tool call is always the right choice — call it \
+                directly instead of writing a script or using curl.
+                """.formatted(publicBaseUrl, publicBaseUrl);
     }
 
     @Bean
@@ -83,7 +89,7 @@ public class McpToolsConfiguration {
     public McpSyncServer mcpSyncServer(HttpServletStreamableServerTransportProvider transportProvider) {
         McpSyncServer server = McpServer.sync(transportProvider)
                 .serverInfo("tokensaver", "0.1.0-POC")
-                .instructions(INSTRUCTIONS)
+                .instructions(instructions)
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(true).build())
                 .tools(
                         webExtractTool(),

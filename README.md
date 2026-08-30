@@ -23,6 +23,14 @@ This is a proof-of-concept stage: no auth, no plans/billing, no persistence. It'
 to answer "does this actually save tokens / reduce friction for an agent" before any of
 that is built.
 
+## Prerequisites
+
+- Java 21
+- Maven
+- `tesseract` on `PATH` — only needed for the `/api/files/ocr` endpoint
+  (`brew install tesseract` on macOS, `apt install tesseract-ocr` on Debian/Ubuntu).
+  Everything else has no system dependency beyond the JVM.
+
 ## Running it
 
 ```bash
@@ -30,22 +38,34 @@ mvn -pl tokensaver-api -am -DskipTests package
 java -jar tokensaver-api/target/tokensaver-api-0.1.0-POC.jar
 ```
 
-Server starts on `http://localhost:8080`. REST endpoints live under `/api/...`; the
+Server starts on `http://localhost:8080` by default. Override with
+`-Dserver.port=<port>` if that's taken. REST endpoints live under `/api/...`; the
 MCP endpoint is `/mcp`.
 
-`/mcp` speaks the MCP protocol (JSON-RPC over HTTP, with session headers) — it's not
-meant to be opened in a browser or curled plainly; a client like Claude Code handles
-that framing for you. To just see what tools exist without any of that, use:
+Confirm it's up:
 
 ```bash
 curl http://localhost:8080/api/mcp-tools
 ```
 
-which returns `{ "tools": [...], "fileOperations": { "note": "...", "endpoints": [...] } }` —
+`/mcp` speaks the MCP protocol (JSON-RPC over HTTP, with session headers) — it's not
+meant to be opened in a browser or curled plainly; a client like Claude Code handles
+that framing for you. `/api/mcp-tools` is the plain-JSON way to see what tools exist
+without any of that — it returns
+`{ "tools": [...], "fileOperations": { "note": "...", "endpoints": [...] } }` —
 the `tools` array is read straight off the live MCP server, so it can't drift out of
 sync with what `/mcp` actually serves; `fileOperations` documents the 5 file-based REST
 endpoints with a ready-to-run curl command for each, since those aren't MCP tools and
 wouldn't otherwise show up here at all.
+
+If you're not deploying at `http://localhost:<port>` (e.g. behind a reverse proxy or a
+public host), set `tokensaver.public-base-url` so the MCP server's `instructions` tell
+agents the correct address for file-operation curl commands instead of guessing:
+
+```bash
+java -jar tokensaver-api/target/tokensaver-api-0.1.0-POC.jar \
+  --tokensaver.public-base-url=https://tokensaver.example.com
+```
 
 ## Connecting an agent via MCP
 
@@ -80,14 +100,92 @@ curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
 ```
 on its own.
 
-## Measuring whether this actually saves tokens
+## Testing
+
+### 1. REST smoke test (no agent involved)
+
+With the server running, exercise each endpoint directly:
+
+```bash
+curl -X POST http://localhost:8080/api/util/hash \
+  -H "Content-Type: application/json" -d '{"text":"hello","algorithm":"SHA-256"}'
+
+curl -X POST http://localhost:8080/api/data/convert \
+  -H "Content-Type: application/json" -d '{"input":"{\"a\":1}","from":"json","to":"yaml"}'
+
+curl -X POST http://localhost:8080/api/data/diff \
+  -H "Content-Type: application/json" \
+  -d '{"left":"{\"a\":1}","right":"{\"a\":2}","format":"json"}'
+
+curl -X POST http://localhost:8080/api/web/extract \
+  -H "Content-Type: application/json" -d '{"url":"https://example.com"}'
+
+curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
+
+curl -F "file=@scan.png" http://localhost:8080/api/files/ocr
+
+curl -F "file=@image.png" "http://localhost:8080/api/files/image/convert?format=jpg&width=200" -o out.jpg
+
+curl -F "files=@a.txt" -F "files=@b.txt" http://localhost:8080/api/util/zip -o bundle.zip
+curl -F "file=@bundle.zip" http://localhost:8080/api/util/unzip
+```
+
+Each should return `200` with the expected JSON/bytes. Try a bad input too (missing
+file part, malformed JSON, unreachable URL) and confirm you get a `4xx` with
+`{ "error": "..." }` rather than a raw `500`.
+
+### 2. MCP tool test (through an actual agent)
+
+Register the connector once per project you'll test from:
+
+```bash
+claude mcp add --transport http tokensaver http://localhost:8080/mcp
+```
+
+Then, in a **fresh** Claude Code session (`/clear` or a new session — an existing
+session won't pick up a connector added after it started) in that project, run `/mcp`
+to confirm `tokensaver` shows up with 5 tools, then try:
+
+```
+Use tokensaver to hash "hello world" with sha256
+Fetch https://example.com with tokensaver and summarize the page
+Convert this JSON to YAML using tokensaver: {"name": "Milan", "role": "developer"}
+Base64 encode the string "tokensaver rocks" using tokensaver
+Diff these two JSON objects using tokensaver: {"a":1,"b":2} and {"a":1,"b":3,"c":4}
+```
+
+These should show up as native tool calls (`web_extract`, `convert_data`, `diff_data`,
+`hash_text`, `base64`), not a curl command or a written script.
+
+### 3. File-operation fallback test (the important one)
+
+File operations are deliberately *not* MCP tools (see below), so this checks that an
+agent correctly falls back to curl instead of trying to read the file itself:
+
+```
+Extract the text from /path/to/some/file.pdf using tokensaver
+```
+
+Watch for: no attempt to read the file's bytes or base64-encode it, and no probing for
+a health-check endpoint first — it should go straight to
+`curl -F "file=@/path/to/some/file.pdf" http://localhost:8080/api/files/extract-text`.
+If it hesitates or guesses at the base URL, check `tokensaver.public-base-url` is set
+correctly for your deployment (see above).
+
+### 4. Measuring whether this actually saves tokens
 
 `/cost` in Claude Code (or the Anthropic API's `usage` field) is the only reliable way
 to see real token numbers — the consumer chat UI doesn't expose this. Compare the same
-task run twice in fresh sessions: once with the tokensaver MCP connector added, once
-without (forcing a written script). Repeat a few times per task — script-writing has
-variance (sometimes it one-shots, sometimes it debugs an import error) — and check the
-output is actually correct in both runs, not just cheaper.
+task run twice in fresh sessions:
+
+- **With tokensaver**: connector added, run one of the prompts above, then `/cost`.
+- **Without tokensaver** (baseline): a session with no tokensaver connector, asking the
+  same thing but forcing a script, e.g. `"Extract the text from X.pdf — write and run a
+  script to do it."`, then `/cost`.
+
+Repeat a few times per task — script-writing has variance (sometimes it one-shots,
+sometimes it debugs an import error) — and check the output is actually correct in
+both runs, not just cheaper.
 
 ## REST endpoints
 
