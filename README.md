@@ -54,21 +54,29 @@ claude mcp add --transport http tokensaver http://localhost:8080/mcp
 ```
 
 (swap the host for wherever tokensaver-api is actually deployed). Once added, the
-agent sees 10 tools — `web_extract`, `convert_data`, `diff_data`, `hash_text`, `base64`,
-`extract_text`, `convert_image`, `ocr`, `zip_files`, `unzip_file` — and can call them
-directly instead of writing a script for the same job.
+agent sees 5 tools — `web_extract`, `convert_data`, `diff_data`, `hash_text`, `base64` —
+and can call them directly instead of writing a script for the same job.
 
-Because tools run on the server, not the agent's machine, file-taking tools
-(`extract_text`, `convert_image`, `ocr`, `zip_files`, `unzip_file`) exchange content
-inline as base64 (`contentBase64` in, base64 text out) rather than by local path. This
-has a real cost: to call one of these tools, the model has to *generate* the entire
-base64 blob as output tokens, which is expensive for anything but small files — the
-opposite of what this project is for. The MCP server's `instructions` (surfaced
-automatically to the agent on connect) and each file tool's own description steer an
-agent with shell access toward running `curl` against the REST endpoint directly
-instead for anything but small files. If you don't see that happening, the agent may
-need a more explicit nudge, or the file tools may not be worth exposing via MCP at all
-for your use case — REST + curl works regardless.
+**File-based operations are deliberately not exposed as MCP tools** — extracting text
+from documents, image conversion, OCR, and zip/unzip are REST-only, called via curl.
+MCP tool arguments are JSON, which has no binary type, so the only way to pass file
+content through a tool call is base64 — and that forces the model to *generate* the
+entire file as output tokens just to make the call, which is more expensive than the
+script this API exists to replace. An earlier version exposed these as tools anyway
+(with warnings and a size cap), but an agent would still sometimes read a file and
+base64-encode it into a tool call rather than reaching for curl. Rather than rely on
+an agent noticing and heeding a warning, the tools simply don't exist — the MCP
+server's `instructions` (surfaced automatically to the agent on connect) tell it to
+use curl for these operations, and there's no tool to reach for instead:
+
+```
+Extract the text from /path/to/file.pdf using tokensaver
+```
+should make the agent run
+```bash
+curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
+```
+on its own.
 
 ## Measuring whether this actually saves tokens
 
@@ -148,7 +156,9 @@ sides and returns a list of `{ path, type, before, after }` changes (`type` is
   `http://localhost:<port>/api/...`) rather than calling service beans directly — the
   REST controllers stay the one real implementation, MCP is just a protocol adapter in
   front of them. Adding a tool here means adding one method that builds a
-  `McpSchema.Tool` and calls the matching REST endpoint through the client.
+  `McpSchema.Tool` and calls the matching REST endpoint through the client — but only
+  for endpoints with no file content; see above for why file-based endpoints stay
+  REST-only.
 - The MCP SDK's internal JSON handling is Jackson 3 ("tools.jackson"), which needs a
   newer `jackson-annotations` than Spring Boot manages by default — pinned explicitly
   in `pom.xml` to avoid a `NoSuchFieldError` at startup.

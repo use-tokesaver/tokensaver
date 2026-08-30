@@ -15,8 +15,6 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,39 +30,34 @@ import java.util.ServiceLoader;
  * rather than calling service beans directly, so the REST controllers stay the single real
  * implementation and this layer is just a thin protocol adapter in front of them.
  *
- * Because a remote MCP caller has no access to this server's filesystem, file-taking
- * tools exchange content inline as base64 rather than by local path. The server's
- * {@code instructions} (and each file tool's own description) steer an agent with shell
- * access toward calling curl directly for anything but small files, since base64-ing a
- * file into a tool call forces the model to emit the whole thing as output tokens.
+ * File-based operations (extract-text, image convert, OCR, zip/unzip) are deliberately
+ * NOT exposed as MCP tools. MCP tool arguments are JSON, which has no binary type, so the
+ * only way to pass file content through a tool call is base64 — and that forces the model
+ * to generate the entire file as output tokens just to make the call, which is more
+ * expensive than the script this API exists to replace. Rather than rely on an agent
+ * reading a warning before reaching for that option, those endpoints simply aren't
+ * offered as tools at all; they're REST + curl only (see the README).
  */
 @Configuration
 public class McpToolsConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger("com.tokensaver.mcp");
 
-    /** Hard cap on inline base64 file content. Above this, file tools reject the call outright. */
-    private static final int MAX_INLINE_BYTES = 50_000;
+    private static final String INSTRUCTIONS = """
+            tokensaver provides deterministic-task tools so you don't have to write \
+            and debug a throwaway script for common jobs.
 
-    private static final String CURL_GUIDANCE = """
-            IMPORTANT — read this before calling any file-based tool (extract_text, \
-            convert_image, ocr, zip_files, unzip_file):
-
-            Do NOT read a local file and pass its content as base64 to these tools. \
-            That forces you to generate the entire file as output tokens just to make \
-            the call — the exact cost this API exists to avoid. These tools enforce a \
-            hard limit of %d bytes on inline content and will reject anything larger \
-            with an error telling you to use curl instead.
-
-            If you have shell/bash access, always call curl directly against the REST \
-            endpoint instead of the MCP tool, regardless of file size:
+            File-based operations (extracting text from documents, OCR, image convert, \
+            zip/unzip) are NOT available as tools here — call the REST API directly with \
+            curl instead, e.g.:
               curl -F "file=@/path/to/file.pdf" <this-server-base-url>/api/files/extract-text
-            Only use the MCP tool's inline-base64 form when there is genuinely no shell \
-            available (e.g. a chat client with no code execution) and the file is small.
+            Do not attempt to read such a file and pass its content to a tool call; no \
+            such tool is offered, and doing so would just mean generating the file as \
+            output tokens for nothing.
 
-            For everything else (web_extract, hash_text, base64, convert_data, diff_data), \
-            there's no file content involved — the MCP tool call is always the right choice.
-            """.formatted(MAX_INLINE_BYTES);
+            For everything below, the MCP tool call is always the right choice — call it \
+            directly instead of writing a script or using curl.
+            """;
 
     private final LoopbackApiClient client;
 
@@ -90,21 +83,14 @@ public class McpToolsConfiguration {
     public McpSyncServer mcpSyncServer(HttpServletStreamableServerTransportProvider transportProvider) {
         McpSyncServer server = McpServer.sync(transportProvider)
                 .serverInfo("tokensaver", "0.1.0-POC")
-                .instructions(CURL_GUIDANCE)
+                .instructions(INSTRUCTIONS)
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(true).build())
                 .tools(
-                        // text/URL tools — no file content involved, always call these directly
                         webExtractTool(),
                         convertDataTool(),
                         diffDataTool(),
                         hashTextTool(),
-                        base64Tool(),
-                        // file tools — base64 in/out; prefer curl directly for anything but small files
-                        extractTextTool(),
-                        convertImageTool(),
-                        ocrTool(),
-                        zipFilesTool(),
-                        unzipFileTool())
+                        base64Tool())
                 .build();
         Runtime.getRuntime().addShutdownHook(new Thread(server::close));
         return server;
@@ -117,8 +103,6 @@ public class McpToolsConfiguration {
         // build it (which attaches the tool list to transportProvider) before this servlet registers.
         return new ServletRegistrationBean<>(transportProvider, "/mcp", "/mcp/*");
     }
-
-    // ---- text/URL tools ----
 
     private McpServerFeatures.SyncToolSpecification webExtractTool() {
         McpSchema.Tool tool = McpSchema.Tool.builder("web_extract")
@@ -220,107 +204,6 @@ public class McpToolsConfiguration {
         });
     }
 
-    // ---- file tools (base64 in/out) ----
-
-    private McpServerFeatures.SyncToolSpecification extractTextTool() {
-        McpSchema.Tool tool = fileTool("extract_text",
-                "Extract plain text from a .pdf/.docx/.xlsx/.txt/.md/.csv file, "
-                        + "instead of writing a PyPDF2/python-docx/openpyxl script.",
-                true);
-        return toolSpec(tool, args -> {
-            JsonNode result = client.postMultipartForJson(
-                    "/api/files/extract-text", null, List.of(filePart(args, "file.txt")));
-            return result.path("text").asText();
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification convertImageTool() {
-        McpSchema.Tool tool = McpSchema.Tool.builder("convert_image")
-                .description(withCurlHint("Resize/reformat an image, instead of writing a Pillow/PIL script. "
-                        + "Pass the source image's raw bytes as base64; returns the converted image's bytes as base64."))
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "contentBase64", Map.of("type", "string", "description", "The source image's raw bytes, base64-encoded"),
-                                "format", Map.of("type", "string", "description", "png, jpg, jpeg, gif, or bmp (default png)"),
-                                "width", Map.of("type", "integer", "description", "Target width in pixels (optional)"),
-                                "height", Map.of("type", "integer", "description", "Target height in pixels (optional)")),
-                        "required", List.of("contentBase64")))
-                .build();
-        return toolSpec(tool, args -> {
-            Map<String, String> query = new LinkedHashMap<>();
-            query.put("format", (String) args.getOrDefault("format", "png"));
-            if (args.get("width") != null) {
-                query.put("width", String.valueOf(toInteger(args.get("width"))));
-            }
-            if (args.get("height") != null) {
-                query.put("height", String.valueOf(toInteger(args.get("height"))));
-            }
-            byte[] converted = client.postMultipartForBytes("/api/files/image/convert",
-                    LoopbackApiClient.buildQuery(query), List.of(filePart(args, "image.png")));
-            return Base64.getEncoder().encodeToString(converted);
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification ocrTool() {
-        McpSchema.Tool tool = fileTool("ocr",
-                "Recognize text in an image or scanned PDF via a locally-run OCR engine, "
-                        + "instead of writing a pytesseract script.",
-                true);
-        return toolSpec(tool, args -> {
-            JsonNode result = client.postMultipartForJson("/api/files/ocr", null, List.of(filePart(args, "image.png")));
-            return result.path("text").asText();
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification zipFilesTool() {
-        McpSchema.Tool tool = McpSchema.Tool.builder("zip_files")
-                .description(withCurlHint("Bundle files into a zip archive, instead of writing a Python zipfile script. "
-                        + "Pass each file's raw bytes as base64; returns the zip's bytes as base64."))
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "files", Map.of("type", "array", "items", Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "filename", Map.of("type", "string"),
-                                                "contentBase64", Map.of("type", "string")),
-                                        "required", List.of("filename", "contentBase64")),
-                                        "description", "Files to include")),
-                        "required", List.of("files")))
-                .build();
-        return toolSpec(tool, args -> {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> files = (List<Map<String, Object>>) args.get("files");
-            if (files == null || files.isEmpty()) {
-                throw new ApiException("files must not be empty");
-            }
-            List<LoopbackApiClient.MultipartPart> parts = new ArrayList<>();
-            for (Map<String, Object> file : files) {
-                parts.add(new LoopbackApiClient.MultipartPart(
-                        "files", requireString(file, "filename"), decodeBase64Checked(requireString(file, "contentBase64"))));
-            }
-            byte[] zipped = client.postMultipartForBytes("/api/util/zip", null, parts);
-            return Base64.getEncoder().encodeToString(zipped);
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification unzipFileTool() {
-        McpSchema.Tool tool = fileTool("unzip_file",
-                "List a zip archive's entries (name, size, text preview), instead of writing a Python zipfile script.",
-                false);
-        return toolSpec(tool, args -> {
-            JsonNode entries = client.postMultipartForJson(
-                    "/api/util/unzip", null, List.of(filePart(args, "archive.zip")));
-            StringBuilder sb = new StringBuilder();
-            for (JsonNode entry : entries) {
-                sb.append(entry.path("name").asText()).append(" (").append(entry.path("size").asLong()).append(" bytes)\n");
-                sb.append(entry.path("textPreview").asText()).append("\n---\n");
-            }
-            return sb.toString();
-        });
-    }
-
     // ---- shared plumbing ----
 
     @FunctionalInterface
@@ -344,7 +227,7 @@ public class McpToolsConfiguration {
         });
     }
 
-    /** Renders args for logging without dumping large values (e.g. base64 file content) into the log. */
+    /** Renders args for logging without dumping large values into the log. */
     private static String summarizeArgs(Map<String, Object> args) {
         if (args == null || args.isEmpty()) {
             return "{}";
@@ -374,71 +257,11 @@ public class McpToolsConfiguration {
         return String.valueOf(value);
     }
 
-    /** Builds a single-file tool's schema: contentBase64 always required, filename optional unless {@code filenameRequired}. */
-    private McpSchema.Tool fileTool(String name, String description, boolean filenameRequired) {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("contentBase64", Map.of("type", "string", "description", "The file's raw bytes, base64-encoded"));
-        List<String> required = new ArrayList<>(List.of("contentBase64"));
-        if (filenameRequired) {
-            properties.put("filename", Map.of("type", "string", "description", "File name, used to detect the format (e.g. report.pdf)"));
-            required.add("filename");
-        }
-        return McpSchema.Tool.builder(name)
-                .description(withCurlHint(description))
-                .inputSchema(Map.of("type", "object", "properties", properties, "required", required))
-                .build();
-    }
-
-    private String withCurlHint(String description) {
-        return "PREFER curl over this tool if you have shell access (see this server's MCP instructions) "
-                + "— content over " + MAX_INLINE_BYTES + " bytes is rejected. " + description;
-    }
-
-    /** Reads {@code contentBase64} (required) and {@code filename} (optional, falling back to {@code defaultFilename}). */
-    private LoopbackApiClient.MultipartPart filePart(Map<String, Object> args, String defaultFilename) {
-        String filename = args.get("filename") instanceof String s && !s.isBlank() ? s : defaultFilename;
-        return new LoopbackApiClient.MultipartPart("file", filename, decodeBase64Checked(requireString(args, "contentBase64")));
-    }
-
     private static String requireString(Map<String, Object> args, String key) {
         Object value = args.get(key);
         if (!(value instanceof String s) || s.isBlank()) {
             throw new ApiException(key + " must be a non-blank string");
         }
         return s;
-    }
-
-    private static byte[] decodeBase64(String value) {
-        try {
-            return Base64.getDecoder().decode(value);
-        } catch (IllegalArgumentException e) {
-            throw new ApiException("contentBase64 is not valid base64: " + e.getMessage(), e);
-        }
-    }
-
-    /** Decodes base64 content and rejects it outright if it's over {@link #MAX_INLINE_BYTES} — see this
-     * tool's isError message for why: passing large files inline burns output tokens generating the
-     * base64 in the first place, so the fix is to use curl, not a bigger limit. */
-    private static byte[] decodeBase64Checked(String value) {
-        byte[] content = decodeBase64(value);
-        if (content.length > MAX_INLINE_BYTES) {
-            throw new ApiException(String.format(
-                    "This content is %,d bytes — over the %,d byte limit for inline base64 tool calls. "
-                            + "If you have shell/bash access, run curl directly against this server's matching "
-                            + "REST endpoint instead (e.g. curl -F \"file=@/path/to/file\" <base-url>/api/files/...) "
-                            + "rather than reading the file and re-encoding it yourself.",
-                    content.length, MAX_INLINE_BYTES));
-        }
-        return content;
-    }
-
-    private static Integer toInteger(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number n) {
-            return n.intValue();
-        }
-        return Integer.parseInt(value.toString());
     }
 }
