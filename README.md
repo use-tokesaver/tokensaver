@@ -41,9 +41,11 @@ that framing for you. To just see what tools exist without any of that, use:
 curl http://localhost:8080/api/mcp-tools
 ```
 
-which returns `{ "tools": [ { name, description, inputSchema }, ... ] }` — read
-straight off the live MCP server, so it can't drift out of sync with what `/mcp`
-actually serves.
+which returns `{ "tools": [...], "fileOperations": { "note": "...", "endpoints": [...] } }` —
+the `tools` array is read straight off the live MCP server, so it can't drift out of
+sync with what `/mcp` actually serves; `fileOperations` documents the 5 file-based REST
+endpoints with a ready-to-run curl command for each, since those aren't MCP tools and
+wouldn't otherwise show up here at all.
 
 ## Connecting an agent via MCP
 
