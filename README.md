@@ -33,6 +33,18 @@ java -jar tokensaver-api/target/tokensaver-api-0.1.0-POC.jar
 Server starts on `http://localhost:8080`. REST endpoints live under `/api/...`; the
 MCP endpoint is `/mcp`.
 
+`/mcp` speaks the MCP protocol (JSON-RPC over HTTP, with session headers) — it's not
+meant to be opened in a browser or curled plainly; a client like Claude Code handles
+that framing for you. To just see what tools exist without any of that, use:
+
+```bash
+curl http://localhost:8080/api/mcp-tools
+```
+
+which returns `{ "tools": [ { name, description, inputSchema }, ... ] }` — read
+straight off the live MCP server, so it can't drift out of sync with what `/mcp`
+actually serves.
+
 ## Connecting an agent via MCP
 
 Add the deployed URL + `/mcp` as a remote MCP connector — for example in Claude Code:

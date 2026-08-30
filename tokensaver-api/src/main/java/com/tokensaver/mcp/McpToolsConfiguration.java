@@ -73,18 +73,21 @@ public class McpToolsConfiguration {
     }
 
     @Bean
-    public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> mcpServlet() {
+    public HttpServletStreamableServerTransportProvider mcpTransportProvider() {
         McpJsonMapper jsonMapper = ServiceLoader.load(McpJsonMapperSupplier.class)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No McpJsonMapperSupplier found on classpath"))
                 .get();
 
-        HttpServletStreamableServerTransportProvider transportProvider = HttpServletStreamableServerTransportProvider
-                .builder()
+        return HttpServletStreamableServerTransportProvider.builder()
                 .jsonMapper(jsonMapper)
                 .mcpEndpoint("/mcp")
                 .build();
+    }
 
+    /** Also injectable elsewhere (e.g. {@link McpToolsInfoController}) to read back the same tool list. */
+    @Bean
+    public McpSyncServer mcpSyncServer(HttpServletStreamableServerTransportProvider transportProvider) {
         McpSyncServer server = McpServer.sync(transportProvider)
                 .serverInfo("tokensaver", "0.1.0-POC")
                 .instructions(CURL_GUIDANCE)
@@ -104,7 +107,14 @@ public class McpToolsConfiguration {
                         unzipFileTool())
                 .build();
         Runtime.getRuntime().addShutdownHook(new Thread(server::close));
+        return server;
+    }
 
+    @Bean
+    public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> mcpServlet(
+            HttpServletStreamableServerTransportProvider transportProvider, McpSyncServer mcpSyncServer) {
+        // mcpSyncServer is an unused parameter here on purpose: depending on it forces Spring to
+        // build it (which attaches the tool list to transportProvider) before this servlet registers.
         return new ServletRegistrationBean<>(transportProvider, "/mcp", "/mcp/*");
     }
 
