@@ -27,9 +27,12 @@ that is built.
 
 - Java 21
 - Maven
-- `tesseract` on `PATH` — only needed for the `/api/files/ocr` endpoint
-  (`brew install tesseract` on macOS, `apt install tesseract-ocr` on Debian/Ubuntu).
-  Everything else has no system dependency beyond the JVM.
+- Optional system dependencies, each needed only for its one endpoint — everything
+  else has no dependency beyond the JVM:
+  - `tesseract` — `/api/files/ocr` (`brew install tesseract` / `apt install tesseract-ocr`)
+  - `whisper` (+ `ffmpeg`) — `/api/audio/transcribe` (`pip install openai-whisper`)
+  - `wkhtmltopdf` / `wkhtmltoimage` — `/api/render/html` (`brew install wkhtmltopdf` /
+    the `wkhtmltopdf` package on Debian/Ubuntu)
 
 ## Running it
 
@@ -54,7 +57,7 @@ that framing for you. `/api/mcp-tools` is the plain-JSON way to see what tools e
 without any of that — it returns
 `{ "tools": [...], "fileOperations": { "note": "...", "endpoints": [...] } }` —
 the `tools` array is read straight off the live MCP server, so it can't drift out of
-sync with what `/mcp` actually serves; `fileOperations` documents the 5 file-based REST
+sync with what `/mcp` actually serves; `fileOperations` documents the file-based REST
 endpoints with a ready-to-run curl command for each, since those aren't MCP tools and
 wouldn't otherwise show up here at all.
 
@@ -76,20 +79,23 @@ claude mcp add --transport http tokensaver http://localhost:8080/mcp
 ```
 
 (swap the host for wherever tokensaver-api is actually deployed). Once added, the
-agent sees 5 tools — `web_extract`, `convert_data`, `diff_data`, `hash_text`, `base64` —
-and can call them directly instead of writing a script for the same job.
+agent sees 6 tools — `web_extract`, `convert_data`, `diff_data`, `hash_text`, `base64`,
+`evaluate_formula` — and can call them directly instead of writing a script for the
+same job.
 
 **File-based operations are deliberately not exposed as MCP tools** — extracting text
-from documents, image conversion, OCR, and zip/unzip are REST-only, called via curl.
-MCP tool arguments are JSON, which has no binary type, so the only way to pass file
-content through a tool call is base64 — and that forces the model to *generate* the
-entire file as output tokens just to make the call, which is more expensive than the
-script this API exists to replace. An earlier version exposed these as tools anyway
-(with warnings and a size cap), but an agent would still sometimes read a file and
-base64-encode it into a tool call rather than reaching for curl. Rather than rely on
-an agent noticing and heeding a warning, the tools simply don't exist — the MCP
-server's `instructions` (surfaced automatically to the agent on connect) tell it to
-use curl for these operations, and there's no tool to reach for instead:
+from documents, image conversion, OCR, zip/unzip, audio transcription, HTML/Markdown
+rendering, barcode generate/decode, and PDF merge/split/rotate/watermark/fill-form are
+all REST-only, called via curl. MCP tool arguments are JSON, which has no binary type,
+so the only way to pass file content through a tool call is base64 — and that forces
+the model to *generate* the entire file as output tokens just to make the call, which
+is more expensive than the script this API exists to replace. An earlier version
+exposed some of these as tools anyway (with warnings and a size cap), but an agent
+would still sometimes read a file and base64-encode it into a tool call rather than
+reaching for curl. Rather than rely on an agent noticing and heeding a warning, the
+tools simply don't exist — the MCP server's `instructions` (surfaced automatically to
+the agent on connect) tell it to use curl for these operations, and there's no tool to
+reach for instead:
 
 ```
 Extract the text from /path/to/file.pdf using tokensaver
@@ -128,6 +134,23 @@ curl -F "file=@image.png" "http://localhost:8080/api/files/image/convert?format=
 
 curl -F "files=@a.txt" -F "files=@b.txt" http://localhost:8080/api/util/zip -o bundle.zip
 curl -F "file=@bundle.zip" http://localhost:8080/api/util/unzip
+
+curl -X POST http://localhost:8080/api/sheet/evaluate \
+  -H "Content-Type: application/json" -d '{"cells":{"A1":"5","A2":"10"},"formula":"=A1+A2"}'
+
+curl -F "file=@audio.mp3" "http://localhost:8080/api/audio/transcribe?model=base"
+
+curl -X POST http://localhost:8080/api/render/html -H "Content-Type: application/json" \
+  -d '{"content":"# Hello","sourceType":"markdown","format":"pdf"}' -o out.pdf
+
+curl -X POST http://localhost:8080/api/barcode/generate -H "Content-Type: application/json" \
+  -d '{"text":"hello","format":"QR_CODE"}' -o qr.png
+curl -F "file=@qr.png" http://localhost:8080/api/barcode/decode
+
+curl -F "files=@a.pdf" -F "files=@b.pdf" http://localhost:8080/api/pdf/merge -o merged.pdf
+curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/split?pagesPerFile=1" -o split.zip
+curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/rotate?degrees=90" -o rotated.pdf
+curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/watermark?text=DRAFT" -o watermarked.pdf
 ```
 
 Each should return `200` with the expected JSON/bytes. Try a bad input too (missing
@@ -144,7 +167,7 @@ claude mcp add --transport http tokensaver http://localhost:8080/mcp
 
 Then, in a **fresh** Claude Code session (`/clear` or a new session — an existing
 session won't pick up a connector added after it started) in that project, run `/mcp`
-to confirm `tokensaver` shows up with 5 tools, then try:
+to confirm `tokensaver` shows up with 6 tools, then try:
 
 ```
 Use tokensaver to hash "hello world" with sha256
@@ -152,10 +175,11 @@ Fetch https://example.com with tokensaver and summarize the page
 Convert this JSON to YAML using tokensaver: {"name": "Milan", "role": "developer"}
 Base64 encode the string "tokensaver rocks" using tokensaver
 Diff these two JSON objects using tokensaver: {"a":1,"b":2} and {"a":1,"b":3,"c":4}
+Use tokensaver to evaluate =SUM(A1:A3)*2 with A1=2, A2=3, A3=4
 ```
 
 These should show up as native tool calls (`web_extract`, `convert_data`, `diff_data`,
-`hash_text`, `base64`), not a curl command or a written script.
+`hash_text`, `base64`, `evaluate_formula`), not a curl command or a written script.
 
 ### 3. File-operation fallback test (the important one)
 
@@ -244,12 +268,56 @@ on Debian/Ubuntu) — this is the one endpoint with a system dependency beyond t
 sides and returns a list of `{ path, type, before, after }` changes (`type` is
 `added`, `removed`, or `changed`).
 
+### Spreadsheet formula evaluation
+`POST /api/sheet/evaluate`
+```json
+{ "cells": { "A1": "5", "A2": "10" }, "formula": "=A1+A2" }
+```
+Evaluates the formula against the given cell values via Apache POI's formula engine.
+Returns `{ "result": "15" }`.
+
+### Audio transcription
+`POST /api/audio/transcribe?model=base` (multipart `file`: any audio format ffmpeg reads)
+Returns `{ "text": "..." }` via the locally installed Whisper CLI. **Requires
+`whisper` on PATH** (`pip install openai-whisper`, plus `ffmpeg`). `model` is one of
+`tiny`/`base`/`small`/`medium`/`large` (default `base`) — larger models are slower but
+more accurate, and are downloaded once on first use.
+
+### Markdown/HTML rendering
+`POST /api/render/html`
+```json
+{ "content": "# Hello", "sourceType": "markdown", "format": "pdf" }
+```
+Renders Markdown or HTML headlessly and returns the file's bytes (`format`: `pdf` or
+`png`). **Requires `wkhtmltopdf`/`wkhtmltoimage` on PATH**.
+
+### Barcode / QR generate & decode
+`POST /api/barcode/generate`
+```json
+{ "text": "hello", "format": "QR_CODE", "width": 300, "height": 300 }
+```
+Returns a PNG. `format` is any ZXing `BarcodeFormat` (`QR_CODE`, `CODE_128`, `EAN_13`,
+`UPC_A`, `PDF_417`, ...), default `QR_CODE`.
+
+`POST /api/barcode/decode` (multipart `file`: an image containing a code)
+Returns `{ "text": "...", "format": "..." }`.
+
+### PDF manipulation
+- `POST /api/pdf/merge` (multipart `files`, repeatable, ≥2) → merged PDF bytes
+- `POST /api/pdf/split?pagesPerFile=1` (multipart `file`) → a `.zip` of PDF chunks
+- `POST /api/pdf/rotate?degrees=90` (multipart `file`) → rotated PDF bytes (`degrees`
+  must be a multiple of 90)
+- `POST /api/pdf/watermark?text=DRAFT` (multipart `file`) → PDF with a diagonal text
+  watermark stamped on every page
+- `POST /api/pdf/fill-form` (multipart `file`, plus a `fields` part with a JSON object
+  like `{"name":"John"}`) → PDF with its AcroForm fields filled in
+
 ## Design notes
 
-- Every module (`web`, `files`, `data`, `util`) is a self-contained package: a
-  `*Service` with the actual logic and a thin `*Controller`. Adding a new REST API
-  means adding a new package in this shape — no shared framework beyond
-  `common/ApiException` + `common/GlobalExceptionHandler`.
+- Every module (`web`, `files`, `data`, `util`, `audio`, `render`, `barcode`, `sheet`)
+  is a self-contained package: a `*Service` with the actual logic and a thin
+  `*Controller`. Adding a new REST API means adding a new package in this shape — no
+  shared framework beyond `common/ApiException` + `common/GlobalExceptionHandler`.
 - `mcp/McpToolsConfiguration` registers MCP tools on a servlet mounted at `/mcp`
   (Streamable HTTP transport). Each tool handler forwards to the matching REST
   endpoint via `mcp/LoopbackApiClient` (a plain `java.net.http.HttpClient` call to
@@ -268,10 +336,7 @@ sides and returns a list of `{ path, type, before, after }` changes (`type` is
 
 ## Ideas for the next batch of APIs (not yet built)
 
-- Local/offline audio transcription (Vosk or whisper.cpp subprocess — deterministic
-  from the caller's point of view, no per-token billing)
 - EXIF read/strip, audio/video metadata (duration, codec)
-- Render Markdown/HTML → PDF or PNG (headless)
 - JSON Schema validation, JSONPath/XPath query
 - Unit conversion, timezone conversion, cron expression parsing
 - Checksum verification, archive formats beyond zip (tar.gz)

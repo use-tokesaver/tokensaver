@@ -67,6 +67,25 @@
             <version>4.15</version>
         </dependency>
 
+        <!-- Markdown -> HTML, before handing off to wkhtmltopdf/wkhtmltoimage -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.22.0</version>
+        </dependency>
+
+        <!-- QR / barcode generate & decode -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
         <!-- Exposes the same functions as native MCP tools over HTTP at /mcp, so an
              MCP-capable agent (Claude, etc.) can add this API as a remote connector —
              no local process or download needed. -->

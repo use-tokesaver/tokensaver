@@ -31,13 +31,14 @@ import java.util.ServiceLoader;
  * rather than calling service beans directly, so the REST controllers stay the single real
  * implementation and this layer is just a thin protocol adapter in front of them.
  *
- * File-based operations (extract-text, image convert, OCR, zip/unzip) are deliberately
- * NOT exposed as MCP tools. MCP tool arguments are JSON, which has no binary type, so the
- * only way to pass file content through a tool call is base64 — and that forces the model
- * to generate the entire file as output tokens just to make the call, which is more
- * expensive than the script this API exists to replace. Rather than rely on an agent
- * reading a warning before reaching for that option, those endpoints simply aren't
- * offered as tools at all; they're REST + curl only (see the README).
+ * File-based operations (extract-text, image convert, OCR, zip/unzip, audio transcription,
+ * HTML/Markdown rendering, barcode generate/decode, PDF merge/split/rotate/watermark/
+ * fill-form) are deliberately NOT exposed as MCP tools. MCP tool arguments are JSON, which
+ * has no binary type, so the only way to pass file content through a tool call is base64 —
+ * and that forces the model to generate the entire file as output tokens just to make the
+ * call, which is more expensive than the script this API exists to replace. Rather than
+ * rely on an agent reading a warning before reaching for that option, those endpoints
+ * simply aren't offered as tools at all; they're REST + curl only (see the README).
  */
 @Configuration
 public class McpToolsConfiguration {
@@ -96,7 +97,8 @@ public class McpToolsConfiguration {
                         convertDataTool(),
                         diffDataTool(),
                         hashTextTool(),
-                        base64Tool())
+                        base64Tool(),
+                        evaluateFormulaTool())
                 .build();
         Runtime.getRuntime().addShutdownHook(new Thread(server::close));
         return server;
@@ -206,6 +208,29 @@ public class McpToolsConfiguration {
                 default -> throw new ApiException("operation must be 'encode' or 'decode'");
             };
             JsonNode result = client.postJson(path, Map.of("text", text));
+            return result.path("result").asText();
+        });
+    }
+
+    private McpServerFeatures.SyncToolSpecification evaluateFormulaTool() {
+        McpSchema.Tool tool = McpSchema.Tool.builder("evaluate_formula")
+                .description("Evaluate a spreadsheet formula (e.g. \"=SUM(A1:A3)\") against a set of cell "
+                        + "values, instead of writing/hand-computing it.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "cells", Map.of("type", "object",
+                                        "description", "Cell reference (e.g. \"A1\") to its literal value"),
+                                "formula", Map.of("type", "string", "description", "e.g. \"=A1+A2\" or \"=SUM(A1:A3)\"")),
+                        "required", List.of("formula")))
+                .build();
+        return toolSpec(tool, args -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rawCells = (Map<String, Object>) args.getOrDefault("cells", Map.of());
+            Map<String, String> cells = new LinkedHashMap<>();
+            rawCells.forEach((k, v) -> cells.put(k, String.valueOf(v)));
+            Map<String, Object> body = Map.of("cells", cells, "formula", requireString(args, "formula"));
+            JsonNode result = client.postJson("/api/sheet/evaluate", body);
             return result.path("result").asText();
         });
     }

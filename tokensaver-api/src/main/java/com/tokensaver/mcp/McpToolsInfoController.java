@@ -38,7 +38,36 @@ public class McpToolsInfoController {
                     "curl -F \"files=@a.txt\" -F \"files=@b.txt\" <base-url>/api/util/zip -o bundle.zip"),
             fileOp("unzip_file", "POST", "/api/util/unzip",
                     "List a zip archive's entries (name, size, text preview)",
-                    "curl -F \"file=@bundle.zip\" <base-url>/api/util/unzip"));
+                    "curl -F \"file=@bundle.zip\" <base-url>/api/util/unzip"),
+            fileOp("transcribe_audio", "POST", "/api/audio/transcribe",
+                    "Transcribe an audio file via the locally installed Whisper CLI",
+                    "curl -F \"file=@audio.mp3\" \"<base-url>/api/audio/transcribe?model=base\""),
+            fileOp("render_html", "POST", "/api/render/html",
+                    "Render Markdown or HTML to PDF or PNG (headless, via wkhtmltopdf/wkhtmltoimage)",
+                    "curl -X POST <base-url>/api/render/html -H \"Content-Type: application/json\" "
+                            + "-d '{\"content\":\"# Hi\",\"sourceType\":\"markdown\",\"format\":\"pdf\"}' -o out.pdf"),
+            fileOp("generate_barcode", "POST", "/api/barcode/generate",
+                    "Generate a QR code or linear barcode as a PNG",
+                    "curl -X POST <base-url>/api/barcode/generate -H \"Content-Type: application/json\" "
+                            + "-d '{\"text\":\"hello\",\"format\":\"QR_CODE\"}' -o code.png"),
+            fileOp("decode_barcode", "POST", "/api/barcode/decode",
+                    "Decode a QR code or barcode from an image",
+                    "curl -F \"file=@code.png\" <base-url>/api/barcode/decode"),
+            fileOp("merge_pdfs", "POST", "/api/pdf/merge",
+                    "Merge two or more PDFs into one (repeat -F files=@... per file)",
+                    "curl -F \"files=@a.pdf\" -F \"files=@b.pdf\" <base-url>/api/pdf/merge -o merged.pdf"),
+            fileOp("split_pdf", "POST", "/api/pdf/split",
+                    "Split a PDF into chunks of N pages, returned as a zip",
+                    "curl -F \"file=@doc.pdf\" \"<base-url>/api/pdf/split?pagesPerFile=1\" -o split.zip"),
+            fileOp("rotate_pdf", "POST", "/api/pdf/rotate",
+                    "Rotate every page of a PDF by a multiple of 90 degrees",
+                    "curl -F \"file=@doc.pdf\" \"<base-url>/api/pdf/rotate?degrees=90\" -o rotated.pdf"),
+            fileOp("watermark_pdf", "POST", "/api/pdf/watermark",
+                    "Stamp a diagonal text watermark on every page of a PDF",
+                    "curl -F \"file=@doc.pdf\" \"<base-url>/api/pdf/watermark?text=DRAFT\" -o watermarked.pdf"),
+            fileOp("fill_pdf_form", "POST", "/api/pdf/fill-form",
+                    "Fill a PDF's AcroForm fields",
+                    "curl -F \"file=@form.pdf\" -F 'fields={\"name\":\"John\"}' <base-url>/api/pdf/fill-form -o filled.pdf"));
 
     private final McpSyncServer mcpSyncServer;
 
