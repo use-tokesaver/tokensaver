@@ -312,6 +312,17 @@ Returns `{ "text": "...", "format": "..." }`.
 - `POST /api/pdf/fill-form` (multipart `file`, plus a `fields` part with a JSON object
   like `{"name":"John"}`) → PDF with its AcroForm fields filled in
 
+## Fixing a broken API
+
+Every endpoint's test scenarios live in `TESTING.md`. Each API module also has a
+dedicated Claude Code subagent in `.claude/agents/` — `web-api`, `files-api`,
+`pdf-api`, `data-api`, `util-api`, `audio-api`, `render-api`, `barcode-api`,
+`sheet-api` — scoped to that module's exact files, with the failure modes already
+hit once during development written down so they don't need rediscovering. When a
+scenario in `TESTING.md` fails, hand it to the matching agent (e.g. "the pdf-api agent
+should look at this: `/api/pdf/merge` returns a corrupted file for 3+ inputs") instead
+of debugging cold.
+
 ## Design notes
 
 - Every module (`web`, `files`, `data`, `util`, `audio`, `render`, `barcode`, `sheet`)
