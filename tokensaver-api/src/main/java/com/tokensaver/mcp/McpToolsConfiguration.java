@@ -31,7 +31,7 @@ import java.util.ServiceLoader;
  * rather than calling service beans directly, so the REST controllers stay the single real
  * implementation and this layer is just a thin protocol adapter in front of them.
  *
- * File-based operations (extract-text, image convert, OCR, zip/unzip, audio transcription,
+ * File-based operations (extract-text, image convert, OCR, audio transcription,
  * HTML/Markdown rendering, barcode generate/decode, PDF merge/split/rotate/watermark/
  * fill-form) are deliberately NOT exposed as MCP tools. MCP tool arguments are JSON, which
  * has no binary type, so the only way to pass file content through a tool call is base64 —
@@ -59,8 +59,9 @@ public class McpToolsConfiguration {
                 This server's base URL is: %s
 
                 File-based operations (extracting text from documents, OCR, image convert, \
-                zip/unzip) are NOT available as tools here — call the REST API directly with \
-                curl instead, e.g.:
+                audio transcription, HTML/Markdown rendering, barcode generate/decode, PDF \
+                merge/split/rotate/watermark/fill-form) are NOT available as tools here — call \
+                the REST API directly with curl instead, e.g.:
                   curl -F "file=@/path/to/file.pdf" %s/api/files/extract-text
                 Do not probe for a health-check endpoint or otherwise try to discover the base \
                 URL first — it is given above. Do not attempt to read such a file and pass its \
@@ -96,8 +97,6 @@ public class McpToolsConfiguration {
                         webExtractTool(),
                         convertDataTool(),
                         diffDataTool(),
-                        hashTextTool(),
-                        base64Tool(),
                         evaluateFormulaTool())
                 .build();
         Runtime.getRuntime().addShutdownHook(new Thread(server::close));
@@ -168,47 +167,6 @@ public class McpToolsConfiguration {
                     "format", requireString(args, "format"));
             JsonNode result = client.postJson("/api/data/diff", body);
             return result.path("diff").asText();
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification hashTextTool() {
-        McpSchema.Tool tool = McpSchema.Tool.builder("hash_text")
-                .description("Compute a hash (MD5/SHA-1/SHA-256/SHA-512) of a string.")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "text", Map.of("type", "string"),
-                                "algorithm", Map.of("type", "string", "description", "MD5, SHA-1, SHA-256 (default), or SHA-512")),
-                        "required", List.of("text")))
-                .build();
-        return toolSpec(tool, args -> {
-            Map<String, String> body = new LinkedHashMap<>();
-            body.put("text", requireString(args, "text"));
-            body.put("algorithm", (String) args.get("algorithm"));
-            JsonNode result = client.postJson("/api/util/hash", body);
-            return result.path("hash").asText();
-        });
-    }
-
-    private McpServerFeatures.SyncToolSpecification base64Tool() {
-        McpSchema.Tool tool = McpSchema.Tool.builder("base64")
-                .description("Base64-encode or decode a string.")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "text", Map.of("type", "string"),
-                                "operation", Map.of("type", "string", "description", "encode or decode")),
-                        "required", List.of("text", "operation")))
-                .build();
-        return toolSpec(tool, args -> {
-            String text = requireString(args, "text");
-            String path = switch (requireString(args, "operation").toLowerCase()) {
-                case "encode" -> "/api/util/base64/encode";
-                case "decode" -> "/api/util/base64/decode";
-                default -> throw new ApiException("operation must be 'encode' or 'decode'");
-            };
-            JsonNode result = client.postJson(path, Map.of("text", text));
-            return result.path("result").asText();
         });
     }
 

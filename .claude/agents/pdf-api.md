@@ -13,6 +13,11 @@ not this one, even though it's also PDFBox-based.
 
 - `tokensaver-api/src/main/java/com/tokensaver/files/PdfManipulationService.java`
 - `tokensaver-api/src/main/java/com/tokensaver/files/PdfController.java`
+- `tokensaver-api/src/main/java/com/tokensaver/util/ArchiveService.java` — a small
+  zip-building helper that `split` uses to bundle its output chunks. It's not its own
+  API (plain zip/unzip was removed from tokensaver as an endpoint — trivial to do
+  locally, not worth a network round-trip), but it lives in `util/` and is yours to
+  touch if a `split` bug traces back to it.
 
 ## Contract
 

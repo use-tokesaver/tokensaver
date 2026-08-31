@@ -3,10 +3,16 @@
 **Deterministic-task APIs for LLM agents.**
 
 When an agent needs to do something mechanical — extract text from a PDF, clean up a
-scraped web page, resize an image, convert JSON to CSV, hash a string, zip some files —
-the usual pattern is: the agent writes a script, runs it, debugs it when it fails, and
-burns a pile of tokens doing so. That work is deterministic. It doesn't need a language
-model at all.
+scraped web page, resize an image, convert JSON to CSV, merge some PDFs — the usual
+pattern is: the agent writes a script, runs it, debugs it when it fails, and burns a
+pile of tokens doing so. That work is deterministic. It doesn't need a language model
+at all.
+
+(Deliberately *not* covered: hashing, base64, zip/unzip. Those are trivial to do on
+any machine an agent already has shell access to — `shasum`/`openssl`, `base64`,
+`zip`/`unzip` — so a network round-trip to tokensaver for them is pure overhead, not
+savings. tokensaver's automated A/B testing caught exactly this: see "Measuring
+whether this actually saves tokens" below.)
 
 tokensaver is a POC: a single Spring Boot service that exposes this work both as plain
 REST endpoints and as native MCP tools over HTTP — so an MCP-capable agent (Claude,
@@ -79,14 +85,13 @@ claude mcp add --transport http tokensaver http://localhost:8080/mcp
 ```
 
 (swap the host for wherever tokensaver-api is actually deployed). Once added, the
-agent sees 6 tools — `web_extract`, `convert_data`, `diff_data`, `hash_text`, `base64`,
-`evaluate_formula` — and can call them directly instead of writing a script for the
-same job.
+agent sees 4 tools — `web_extract`, `convert_data`, `diff_data`, `evaluate_formula` —
+and can call them directly instead of writing a script for the same job.
 
 **File-based operations are deliberately not exposed as MCP tools** — extracting text
-from documents, image conversion, OCR, zip/unzip, audio transcription, HTML/Markdown
-rendering, barcode generate/decode, and PDF merge/split/rotate/watermark/fill-form are
-all REST-only, called via curl. MCP tool arguments are JSON, which has no binary type,
+from documents, image conversion, OCR, audio transcription, HTML/Markdown rendering,
+barcode generate/decode, and PDF merge/split/rotate/watermark/fill-form are all
+REST-only, called via curl. MCP tool arguments are JSON, which has no binary type,
 so the only way to pass file content through a tool call is base64 — and that forces
 the model to *generate* the entire file as output tokens just to make the call, which
 is more expensive than the script this API exists to replace. An earlier version
@@ -113,9 +118,6 @@ on its own.
 With the server running, exercise each endpoint directly:
 
 ```bash
-curl -X POST http://localhost:8080/api/util/hash \
-  -H "Content-Type: application/json" -d '{"text":"hello","algorithm":"SHA-256"}'
-
 curl -X POST http://localhost:8080/api/data/convert \
   -H "Content-Type: application/json" -d '{"input":"{\"a\":1}","from":"json","to":"yaml"}'
 
@@ -131,9 +133,6 @@ curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
 curl -F "file=@scan.png" http://localhost:8080/api/files/ocr
 
 curl -F "file=@image.png" "http://localhost:8080/api/files/image/convert?format=jpg&width=200" -o out.jpg
-
-curl -F "files=@a.txt" -F "files=@b.txt" http://localhost:8080/api/util/zip -o bundle.zip
-curl -F "file=@bundle.zip" http://localhost:8080/api/util/unzip
 
 curl -X POST http://localhost:8080/api/sheet/evaluate \
   -H "Content-Type: application/json" -d '{"cells":{"A1":"5","A2":"10"},"formula":"=A1+A2"}'
@@ -167,19 +166,17 @@ claude mcp add --transport http tokensaver http://localhost:8080/mcp
 
 Then, in a **fresh** Claude Code session (`/clear` or a new session — an existing
 session won't pick up a connector added after it started) in that project, run `/mcp`
-to confirm `tokensaver` shows up with 6 tools, then try:
+to confirm `tokensaver` shows up with 4 tools, then try:
 
 ```
-Use tokensaver to hash "hello world" with sha256
 Fetch https://example.com with tokensaver and summarize the page
 Convert this JSON to YAML using tokensaver: {"name": "Milan", "role": "developer"}
-Base64 encode the string "tokensaver rocks" using tokensaver
 Diff these two JSON objects using tokensaver: {"a":1,"b":2} and {"a":1,"b":3,"c":4}
 Use tokensaver to evaluate =SUM(A1:A3)*2 with A1=2, A2=3, A3=4
 ```
 
 These should show up as native tool calls (`web_extract`, `convert_data`, `diff_data`,
-`hash_text`, `base64`, `evaluate_formula`), not a curl command or a written script.
+`evaluate_formula`), not a curl command or a written script.
 
 ### 3. File-operation fallback test (the important one)
 
@@ -242,23 +239,6 @@ Returns the converted image bytes directly.
 { "input": "{\"a\":1}", "from": "json", "to": "yaml" }
 ```
 Supports `json`, `yaml`, `csv` in any direction (CSV requires an array of flat objects).
-
-### Hashing
-`POST /api/util/hash`
-```json
-{ "text": "hello", "algorithm": "SHA-256" }
-```
-Algorithms: `MD5`, `SHA-1`, `SHA-256`, `SHA-512`.
-
-### Base64
-`POST /api/util/base64/encode` / `POST /api/util/base64/decode`
-```json
-{ "text": "hello world" }
-```
-
-### Zip / unzip
-`POST /api/util/zip` (multipart `files`, repeatable) → returns a `.zip`
-`POST /api/util/unzip` (multipart `file`) → `[{ name, size, textPreview }]`
 
 ### OCR
 `POST /api/files/ocr` (multipart `file`: an image, or a scanned `.pdf`)
@@ -323,8 +303,8 @@ Returns `{ "text": "...", "format": "..." }`.
 
 Every endpoint's test scenarios live in `TESTING.md`. Each API module also has a
 dedicated Claude Code subagent in `.claude/agents/` — `web-api`, `files-api`,
-`pdf-api`, `data-api`, `util-api`, `audio-api`, `render-api`, `barcode-api`,
-`sheet-api` — scoped to that module's exact files, with the failure modes already
+`pdf-api`, `data-api`, `audio-api`, `render-api`, `barcode-api`, `sheet-api` — scoped
+to that module's exact files, with the failure modes already
 hit once during development written down so they don't need rediscovering. When a
 scenario in `TESTING.md` fails, hand it to the matching agent (e.g. "the pdf-api agent
 should look at this: `/api/pdf/merge` returns a corrupted file for 3+ inputs") instead
@@ -332,10 +312,13 @@ of debugging cold.
 
 ## Design notes
 
-- Every module (`web`, `files`, `data`, `util`, `audio`, `render`, `barcode`, `sheet`)
-  is a self-contained package: a `*Service` with the actual logic and a thin
-  `*Controller`. Adding a new REST API means adding a new package in this shape — no
-  shared framework beyond `common/ApiException` + `common/GlobalExceptionHandler`.
+- Every module (`web`, `files`, `data`, `audio`, `render`, `barcode`, `sheet`) is a
+  self-contained package: a `*Service` with the actual logic and a thin `*Controller`.
+  Adding a new REST API means adding a new package in this shape — no shared framework
+  beyond `common/ApiException` + `common/GlobalExceptionHandler`. `util/ArchiveService`
+  is the one exception: it's not its own API (plain zip/unzip was removed — trivial to
+  do locally, not worth a network round-trip), just an internal helper `pdf-api`'s
+  split endpoint uses to bundle its output chunks.
 - `mcp/McpToolsConfiguration` registers MCP tools on a servlet mounted at `/mcp`
   (Streamable HTTP transport). Each tool handler forwards to the matching REST
   endpoint via `mcp/LoopbackApiClient` (a plain `java.net.http.HttpClient` call to

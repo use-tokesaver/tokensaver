@@ -85,35 +85,11 @@ matching agent in `.claude/agents/` (see `README.md` → "Fixing a broken API").
 | 6 | Malformed JSON/YAML on either side | `400` |
 | 7 | Deeply nested structural change | `200`, path correctly dotted/indexed |
 
-## Hashing — `/api/util/hash`
-
-| # | Scenario | Expect |
-|---|---|---|
-| 1 | Each of `MD5`, `SHA-1`, `SHA-256`, `SHA-512` | `200`, correct known hash for a fixed input |
-| 2 | Omit `algorithm` | `200`, defaults to `SHA-256` |
-| 3 | Invalid algorithm name | `400` |
-| 4 | Empty `text` | `400` or `200` for the empty-string hash — pick one and keep it consistent |
-
-## Base64 — `/api/util/base64/encode` / `/decode`
-
-| # | Scenario | Expect |
-|---|---|---|
-| 1 | Encode → decode round-trip | Output equals original input |
-| 2 | Decode invalid base64 | `400`, not `500` |
-| 3 | Encode empty string | `200`, empty result |
-| 4 | Unicode input | Round-trips correctly (UTF-8) |
-
-## Zip / unzip — `/api/util/zip` / `/api/util/unzip`
-
-| # | Scenario | Expect |
-|---|---|---|
-| 1 | Zip 2+ files | `200`, valid zip containing all files |
-| 2 | Zip a single file | `200` |
-| 3 | Zip with no files | `400` |
-| 4 | Unzip a valid archive | `200`, `[{name,size,textPreview}]` per entry |
-| 5 | Unzip a non-zip file | `400`, not `500` |
-| 6 | Unzip an archive with a binary entry | `200`, `textPreview` shows `<binary content, N bytes>` |
-| 7 | Unzip an archive with nested directories | `200`, directory entries skipped, file entries listed |
+> Hashing, base64, and zip/unzip were removed as APIs — they're trivial to do locally
+> with tools an agent's shell already has (`shasum`/`openssl`, `base64`, `zip`/`unzip`),
+> so a network round-trip for them was pure overhead. `util/ArchiveService` still
+> exists internally, used only by `/api/pdf/split` to bundle its output chunks — it's
+> not its own tested API surface.
 
 ## Spreadsheet formula evaluation — `/api/sheet/evaluate`
 
@@ -192,7 +168,7 @@ matching agent in `.claude/agents/` (see `README.md` → "Fixing a broken API").
 | 1 | Any JSON endpoint hit with the wrong HTTP method (e.g. `GET /api/data/convert`) | `405`, not `500` (regression test for the `ErrorResponse` bug fixed in [GlobalExceptionHandler](tokensaver-api/src/main/java/com/tokensaver/common/GlobalExceptionHandler.java)) |
 | 2 | Any multipart endpoint hit as plain JSON | `400`, "Expected a multipart/form-data request" |
 | 3 | Upload exceeding the 50MB multipart limit | `413` |
-| 4 | `GET /api/mcp-tools` | `200`, `tools` array has all 6 MCP tools, `fileOperations.endpoints` has all 14 file-based endpoints |
+| 4 | `GET /api/mcp-tools` | `200`, `tools` array has all 4 MCP tools, `fileOperations.endpoints` has all 12 file-based endpoints |
 | 5 | `POST /api/mcp-tools` | `405` |
 | 6 | Every request logs one line via `com.tokensaver.http` (check `RequestLoggingFilter` output) | Log line present with method, path, status, duration |
 
@@ -221,8 +197,8 @@ claude mcp list          # confirms tokensaver is registered
 ```
 
 Then start (or `/clear`) a session **in that project directory** and run `/mcp` inside
-it — you should see `tokensaver` connected with 6 tools (`web_extract`, `convert_data`,
-`diff_data`, `hash_text`, `base64`, `evaluate_formula`).
+it — you should see `tokensaver` connected with 4 tools (`web_extract`, `convert_data`,
+`diff_data`, `evaluate_formula`).
 
 To remove it later: `claude mcp remove tokensaver -s local`.
 
@@ -234,9 +210,9 @@ cat > /tmp/tokensaver-mcp.json <<'EOF'
 { "mcpServers": { "tokensaver": { "type": "http", "url": "http://localhost:8080/mcp" } } }
 EOF
 
-claude -p "Hash the string \"hello world\" with sha256" \
+claude -p 'Evaluate =SUM(A1:A3)*2 where A1=2, A2=3, A3=4' \
   --mcp-config /tmp/tokensaver-mcp.json --strict-mcp-config \
-  --allowedTools "mcp__tokensaver__hash_text" \
+  --allowedTools "mcp__tokensaver__evaluate_formula" \
   --output-format json
 ```
 
@@ -254,10 +230,8 @@ With the connector loaded (either way above), prompts that should trigger a **na
 tool call** (no script, no curl):
 
 ```
-Hash the string "hello world" with sha256
 Convert this JSON to YAML: {"name": "Milan", "role": "developer"}
 Diff these two JSON objects: {"a":1,"b":2} and {"a":1,"b":3,"c":4}
-Base64 encode the string "tokensaver rocks"
 Fetch https://example.com and summarize the page
 Evaluate =SUM(A1:A3)*2 where A1=2, A2=3, A3=4
 ```
@@ -316,8 +290,8 @@ python3 scripts/mcp_ab_test.py --runs 5 --sample-pdf /path/to/some/file.pdf
 
 Flags: `--tokensaver-url` (default `http://localhost:8080`), `--claude-bin` (default
 `claude` — use the full path if it's not on PATH, e.g. `~/.local/bin/claude`),
-`--only hash_text,web_extract` to run a subset, `--output-dir` to control where raw
-per-run JSON is saved (default `.ab-results/<timestamp>/`, already gitignored).
+`--only evaluate_formula,web_extract` to run a subset, `--output-dir` to control where
+raw per-run JSON is saved (default `.ab-results/<timestamp>/`, already gitignored).
 
 Read the script's own docstring before running it — it grants `Bash` broadly (and
 `curl` for the file-fallback case) via `--allowedTools` so the runs can complete
@@ -329,19 +303,19 @@ Sample output:
 ```
 case                    variant     runs  avg cost ($)    avg total tokens  errors
 ----------------------------------------------------------------------------------
-hash_text               with_mcp    3     0.02780         84200             0
-hash_text               baseline    3     0.02310         55800             0
+evaluate_formula        with_mcp    3     0.02780         84200             0
+evaluate_formula        baseline    3     0.02310         55800             0
 
 Savings (with_mcp vs baseline):
-  hash_text: -20.3% cost change with tokensaver (...)
+  evaluate_formula: -20.3% cost change with tokensaver (...)
 ```
 
-Don't assume the tool always wins — for trivial tasks (a single hash, a small base64
-string) the MCP server's `instructions` text is fixed context overhead that can
-outweigh what the tool call itself saves; the script exists specifically to catch
-that rather than assume it. The tool's real advantage shows up on the file-based
-fallback cases and anything non-trivial enough that the baseline would otherwise
-write-and-debug a script.
+Don't assume the tool always wins — for a small/trivial case the MCP server's
+`instructions` text is fixed context overhead that can outweigh what the tool call
+itself saves (this is exactly why `hash_text`/`base64`/zip-unzip were dropped from the
+API entirely — the automation showed them losing to the baseline). The tool's real
+advantage shows up on the file-based fallback case and anything non-trivial enough
+that the baseline would otherwise write-and-debug a script.
 
 ## Sample files
 

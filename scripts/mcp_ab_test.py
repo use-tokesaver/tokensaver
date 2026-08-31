@@ -33,14 +33,6 @@ from pathlib import Path
 
 TEST_CASES = [
     {
-        "id": "hash_text",
-        "prompt": 'Hash the string "hello world" with sha256.',
-        "mcp_allowed": "mcp__tokensaver__hash_text",
-        "baseline_allowed": "Bash",
-        "baseline_disallowed": "",
-        "requires_pdf": False,
-    },
-    {
         "id": "convert_data",
         "prompt": 'Convert this JSON to YAML: {"name": "Milan", "role": "developer"}',
         "mcp_allowed": "mcp__tokensaver__convert_data",
@@ -52,14 +44,6 @@ TEST_CASES = [
         "id": "diff_data",
         "prompt": 'Diff these two JSON objects: {"a":1,"b":2} and {"a":1,"b":3,"c":4}',
         "mcp_allowed": "mcp__tokensaver__diff_data",
-        "baseline_allowed": "Bash",
-        "baseline_disallowed": "",
-        "requires_pdf": False,
-    },
-    {
-        "id": "base64",
-        "prompt": 'Base64 encode the string "tokensaver rocks"',
-        "mcp_allowed": "mcp__tokensaver__base64",
         "baseline_allowed": "Bash",
         "baseline_disallowed": "",
         "requires_pdf": False,
