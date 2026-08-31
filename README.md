@@ -211,6 +211,13 @@ Repeat a few times per task — script-writing has variance (sometimes it one-sh
 sometimes it debugs an import error) — and check the output is actually correct in
 both runs, not just cheaper.
 
+This whole comparison is automated in `scripts/mcp_ab_test.py`, using Claude Code's
+non-interactive mode (`claude -p --output-format json`) to run both variants of each
+case N times and report average cost/tokens without any manual `/cost` checking. See
+`TESTING.md` → "MCP: loading it, using it in a prompt, and using it without it" for
+the full walkthrough (including exactly how the connector gets loaded/unloaded for a
+clean comparison) and the automation's safety notes.
+
 ## REST endpoints
 
 ### Web extraction
