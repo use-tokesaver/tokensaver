@@ -1,349 +1,264 @@
 # tokensaver
 
-**Deterministic-task APIs for LLM agents.**
+**Local MCP server that turns web pages, PDFs, Office files and JSON into compact,
+LLM-ready text — so your coding agent spends its context on content, not markup.**
 
-When an agent needs to do something mechanical — extract text from a PDF, clean up a
-scraped web page, resize an image, convert JSON to CSV, merge some PDFs — the usual
-pattern is: the agent writes a script, runs it, debugs it when it fails, and burns a
-pile of tokens doing so. That work is deterministic. It doesn't need a language model
-at all.
+Ask your agent *"read https://go.dev/doc/effective_go with tokensaver"* or *"fetch
+this JSON via tokensaver and drop the large lists"*. tokensaver fetches or opens the
+thing, strips everything an LLM doesn't need (navigation, scripts, styling, ads,
+citation marks, running page headers, null fields…) and returns clean Markdown or
+shrunk JSON — paged, with an outline so the agent can read just the part it needs.
 
-(Deliberately *not* covered: hashing, base64, zip/unzip. Those are trivial to do on
-any machine an agent already has shell access to — `shasum`/`openssl`, `base64`,
-`zip`/`unzip` — so a network round-trip to tokensaver for them is pure overhead, not
-savings. tokensaver's automated A/B testing caught exactly this: see "Measuring
-whether this actually saves tokens" below.)
+- **Local and offline-first.** One Go binary. Runs on your machine as a stdio MCP
+  server; nothing is sent anywhere except the requests to URLs you ask for. No
+  telemetry, no API keys, and it never calls an LLM itself.
+- **No runtime dependencies.** PDF extraction uses PDFium compiled to WebAssembly,
+  running inside the binary. Chrome/Chromium is used *only if installed*, for pages
+  that need JavaScript.
+- **Inspired by [Microsoft MarkItDown](https://github.com/microsoft/markitdown)**,
+  rebuilt in Go around one goal: fewer tokens.
 
-tokensaver is a POC: a single Spring Boot service that exposes this work both as plain
-REST endpoints and as native MCP tools over HTTP — so an MCP-capable agent (Claude,
-etc.) can add it as a remote connector and call the tools directly, the same way a
-Google Drive/Gmail connector works. Nothing to download or run locally.
+## How much it saves
 
-**Hard constraint:** nothing in this service calls an LLM or any paid AI API. Every
-endpoint is implemented with deterministic code and open-source libraries (Jsoup,
-PDFBox, POI, Jackson, java.awt/ImageIO, java.util.zip, java.security). The whole point
-is to save tokens — routing the work through another model would just burn them
-somewhere else.
+Measured on real sources by the live benchmark on 2026-09-11 (tokens estimated as
+characters / 4; reproduce with `TOKENSAVER_LIVE=1 go test ./e2e/ -run Live -v`):
 
-This is a proof-of-concept stage: no auth, no plans/billing, no persistence. It's meant
-to answer "does this actually save tokens / reduce friction for an agent" before any of
-that is built.
+| Source | Raw tokens | tokensaver | Saved |
+|---|---:|---:|---:|
+| Wikipedia article (Go), whole article | 183,202 | 19,383 | 89% |
+| …its outline | | 248 | 99.9% |
+| …only the "History" section | | 1,274 | 99.3% |
+| GitHub repo page (modelcontextprotocol/go-sdk) | 87,100 | 1,433 | 98% |
+| MDN guide (Using Fetch), whole page | 45,954 | 6,270 | 86% |
+| pkg.go.dev (encoding/json), only `section="func Unmarshal"` | 51,758 | 1,184 | 98% |
+| GitHub search API, 50 repos, `select` + `table` | 78,745 | 379 | 99.5% |
+| …its outline | | 1,048 | 98.7% |
+| arXiv paper (PDF, 15 pages) | 2.2 MB binary | 10,019 | — |
 
-## Prerequisites
+Each row also checks that the facts a reader looks for (names, dates, code
+signatures, the top repositories) survive in the output.
 
-- Java 21
-- Maven
-- Optional system dependencies, each needed only for its one endpoint — everything
-  else has no dependency beyond the JVM:
-  - `tesseract` — `/api/files/ocr` (`brew install tesseract` / `apt install tesseract-ocr`)
-  - `whisper` (+ `ffmpeg`) — `/api/audio/transcribe` (`pip install openai-whisper`)
-  - `wkhtmltopdf` / `wkhtmltoimage` — `/api/render/html` (`brew install wkhtmltopdf` /
-    the `wkhtmltopdf` package on Debian/Ubuntu)
+"Raw" is what a plain fetch puts in the context. Agents don't always see raw
+pages: Claude Code's WebFetch, for one, has a small model summarize the page
+first. To compare against what an agent really spends, run the A/B harness
+(see [Testing](#testing)).
 
-## Running it
+The outline is where large savings come from: a 50-page PDF or a long docs page
+costs a few hundred tokens to outline, then the agent reads only the section it
+needs.
 
-```bash
-mvn -pl tokensaver-api -am -DskipTests package
-java -jar tokensaver-api/target/tokensaver-api-0.1.0-POC.jar
-```
-
-Server starts on `http://localhost:8080` by default. Override with
-`-Dserver.port=<port>` if that's taken. REST endpoints live under `/api/...`; the
-MCP endpoint is `/mcp`.
-
-Confirm it's up:
+## Install
 
 ```bash
-curl http://localhost:8080/api/mcp-tools
+go install github.com/MilanBehnam/tokensaver/cmd/tokensaver@latest
 ```
 
-`/mcp` speaks the MCP protocol (JSON-RPC over HTTP, with session headers) — it's not
-meant to be opened in a browser or curled plainly; a client like Claude Code handles
-that framing for you. `/api/mcp-tools` is the plain-JSON way to see what tools exist
-without any of that — it returns
-`{ "tools": [...], "fileOperations": { "note": "...", "endpoints": [...] } }` —
-the `tools` array is read straight off the live MCP server, so it can't drift out of
-sync with what `/mcp` actually serves; `fileOperations` documents the file-based REST
-endpoints with a ready-to-run curl command for each, since those aren't MCP tools and
-wouldn't otherwise show up here at all.
+(Go 1.26+. The binary lands in `$(go env GOPATH)/bin` — make sure that is on your
+`PATH`.) Or build from a clone: `go build -o tokensaver ./cmd/tokensaver`.
 
-If you're not deploying at `http://localhost:<port>` (e.g. behind a reverse proxy or a
-public host), set `tokensaver.public-base-url` so the MCP server's `instructions` tell
-agents the correct address for file-operation curl commands instead of guessing:
+Optional: Chrome, Chromium, Brave or Edge installed in the usual place (or
+`TOKENSAVER_CHROME=/path/to/chrome`) lets tokensaver render JavaScript-only pages.
+
+## Connect it to your agent
+
+**Claude Code**
 
 ```bash
-java -jar tokensaver-api/target/tokensaver-api-0.1.0-POC.jar \
-  --tokensaver.public-base-url=https://tokensaver.example.com
+claude mcp add --scope user tokensaver -- tokensaver
 ```
 
-## Connecting an agent via MCP
+**Cursor** (`~/.cursor/mcp.json`), **Claude Desktop**
+(`claude_desktop_config.json`), and other MCP clients:
 
-Add the deployed URL + `/mcp` as a remote MCP connector — for example in Claude Code:
-
-```bash
-claude mcp add --transport http tokensaver http://localhost:8080/mcp
+```json
+{
+  "mcpServers": {
+    "tokensaver": { "command": "tokensaver" }
+  }
+}
 ```
 
-(swap the host for wherever tokensaver-api is actually deployed). Once added, the
-agent sees 4 tools — `web_extract`, `convert_data`, `diff_data`, `evaluate_formula` —
-and can call them directly instead of writing a script for the same job.
+If the client can't find it, use the absolute path, e.g.
+`"command": "/Users/you/go/bin/tokensaver"`.
 
-**File-based operations are deliberately not exposed as MCP tools** — extracting text
-from documents, image conversion, OCR, audio transcription, HTML/Markdown rendering,
-barcode generate/decode, and PDF merge/split/rotate/watermark/fill-form are all
-REST-only, called via curl. MCP tool arguments are JSON, which has no binary type,
-so the only way to pass file content through a tool call is base64 — and that forces
-the model to *generate* the entire file as output tokens just to make the call, which
-is more expensive than the script this API exists to replace. An earlier version
-exposed some of these as tools anyway (with warnings and a size cap), but an agent
-would still sometimes read a file and base64-encode it into a tool call rather than
-reaching for curl. Rather than rely on an agent noticing and heeding a warning, the
-tools simply don't exist — the MCP server's `instructions` (surfaced automatically to
-the agent on connect) tell it to use curl for these operations, and there's no tool to
-reach for instead:
+## Tools
 
-```
-Extract the text from /path/to/file.pdf using tokensaver
-```
-should make the agent run
-```bash
-curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
-```
+The tool definitions cost ~650 tokens per request in total — they are kept short
+on purpose.
+
+### `read` — web pages and documents → Markdown
+
+| Parameter | |
+|---|---|
+| `source` | URL, or local file path (`~/`, `file://`, and bare `localhost:3000/…` work) |
+| `outline` | Only list the sections: id, heading, estimated size |
+| `section` | Only return one section — an id from the outline, or heading text |
+| `page` | Page of the output (long output is split at paragraph boundaries) |
+| `max_chars` | Page size, default 20,000 characters (~5k tokens) |
+| `js` | Render in headless Chrome first; happens automatically when a page looks empty |
+
+Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, and any text file
+(Markdown, CSV, code, logs…).
+
+What it does per format:
+
+- **Web pages** — main-content extraction (Mozilla Readability), then Markdown.
+  Scripts, styles, images, forms, nav/header/footer chrome, heading permalinks and
+  `[12]` citation marks are dropped; same-site links become short root-relative
+  paths (`/docs/x`), tracking parameters (`utm_*`) are removed; tables and code
+  blocks (with their language) are kept.
+- **PDF** — text per page under `## Page N` headings. Running headers/footers and
+  page numbers that repeat on most pages are removed.
+- **DOCX** — headings (from styles), bullet/numbered lists, bold/italic, links,
+  tables. Deleted tracked changes are skipped.
+- **XLSX** — each sheet as a Markdown table of displayed values; empty rows and
+  columns dropped; hidden sheets marked.
+- **PPTX** — `## Slide N: Title`, bullets with nesting, tables, speaker notes;
+  slide numbers/footers skipped.
+
+Paged output ends with a hint such as `[page 1 of 4 · next: page=2 · outline=true
+lists sections]`. When a table or code block is split across pages, the table
+header is repeated and the code fence is closed and reopened, so every page stands
 on its own.
+
+### `read_json` — JSON APIs and files, shrunk
+
+| Parameter | |
+|---|---|
+| `source` | URL (HTTP GET) or local file path |
+| `outline` | Show the structure — keys, types, array sizes, one example each — instead of the data |
+| `select` | Keep only these fields (see below) |
+| `drop_keys` | Keys to remove everywhere; names or globs: `["*_url", "node_id"]` |
+| `max_items` | Keep only the first N items of every array (`… 480 more items`) |
+| `drop_lists_over` | Replace arrays longer than N with `"[480 items omitted]"` |
+| `max_str` | Cut strings longer than N characters |
+| `table` | Render arrays of objects as Markdown tables |
+| `keep_empty` | Keep `null`, `""`, `[]`, `{}` — by default they are dropped |
+| `page`, `max_chars` | As for `read` |
+
+`select` syntax — a small, forgiving path language:
+
+```text
+total_count                     a field
+items.name                      a field of every element (arrays map implicitly)
+items[0]   items[-1]   items[:5]  index / slice
+items.{name, owner.login}       pick fields → {"name":…, "owner.login":…}
+items.{repo: name, stars: stargazers_count}   pick with aliases
+total_count, items.id           several fields at once
+items[].tags[0]                 explicit [] maps everything after it (first tag of each item)
+```
+
+A typical exchange on an unfamiliar API:
+
+```text
+read_json source=https://api.github.com/search/repositories?q=mcp outline=true
+→ {total_count: number (12340), items: [30] {id: number, name: string ("github-mcp-server"), owner: {…}, …}}
+
+read_json source=… select="items.{full_name, stargazers_count, description}" max_items=5 table=true
+→ | full_name | stargazers_count | description |
+  |---|---|---|
+  | github/github-mcp-server | 32860 | GitHub's official MCP Server |
+  …
+```
+
+JSON output is compact: containers that fit on a line stay on one line; bigger ones
+put one element per line with one-space indentation — close to minified JSON in
+tokens, but still readable and pageable. API error responses (4xx/5xx) are returned
+shrunk, so the agent sees the error message itself.
+
+## Configuration
+
+| Environment variable | |
+|---|---|
+| `TOKENSAVER_MAX_CHARS` | Default page size (default `20000`) |
+| `TOKENSAVER_CHROME` | Path to a Chrome/Chromium-family browser |
+| `TOKENSAVER_LOG` | `debug`, `info` (default) or `warn`; logs go to stderr — one line per tool call with sizes and timings |
+
+Freshness: a plain `read`/`read_json` always fetches the URL again (the page or API
+you are developing may have just changed). Follow-up calls — `page=2`, `section=`,
+`outline=` — reuse the result for up to 10 minutes, in memory only, so page numbers
+stay stable and big PDFs aren't re-parsed. Local files are re-read whenever they
+change.
+
+## Security notes
+
+tokensaver reads what your agent asks it to read, with your permissions: any local
+file you can read, and any URL, including `localhost` and your private network
+(useful for dev servers, but keep it in mind if your agent processes untrusted
+content). It only performs HTTP `GET` requests and never writes files.
 
 ## Testing
 
-### 1. REST smoke test (no agent involved)
-
-With the server running, exercise each endpoint directly:
+Three layers, from free and deterministic to real and billed:
 
 ```bash
-curl -X POST http://localhost:8080/api/data/convert \
-  -H "Content-Type: application/json" -d '{"input":"{\"a\":1}","from":"json","to":"yaml"}'
-
-curl -X POST http://localhost:8080/api/data/diff \
-  -H "Content-Type: application/json" \
-  -d '{"left":"{\"a\":1}","right":"{\"a\":2}","format":"json"}'
-
-curl -X POST http://localhost:8080/api/web/extract \
-  -H "Content-Type: application/json" -d '{"url":"https://example.com"}'
-
-curl -F "file=@/path/to/file.pdf" http://localhost:8080/api/files/extract-text
-
-curl -F "file=@scan.png" http://localhost:8080/api/files/ocr
-
-curl -F "file=@image.png" "http://localhost:8080/api/files/image/convert?format=jpg&width=200" -o out.jpg
-
-curl -X POST http://localhost:8080/api/sheet/evaluate \
-  -H "Content-Type: application/json" -d '{"cells":{"A1":"5","A2":"10"},"formula":"=A1+A2"}'
-
-curl -F "file=@audio.mp3" "http://localhost:8080/api/audio/transcribe?model=base"
-
-curl -X POST http://localhost:8080/api/render/html -H "Content-Type: application/json" \
-  -d '{"content":"# Hello","sourceType":"markdown","format":"pdf"}' -o out.pdf
-
-curl -X POST http://localhost:8080/api/barcode/generate -H "Content-Type: application/json" \
-  -d '{"text":"hello","format":"QR_CODE"}' -o qr.png
-curl -F "file=@qr.png" http://localhost:8080/api/barcode/decode
-
-curl -F "files=@a.pdf" -F "files=@b.pdf" http://localhost:8080/api/pdf/merge -o merged.pdf
-curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/split?pagesPerFile=1" -o split.zip
-curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/rotate?degrees=90" -o rotated.pdf
-curl -F "file=@merged.pdf" "http://localhost:8080/api/pdf/watermark?text=DRAFT" -o watermarked.pdf
+go test ./...                                   # unit tests + the e2e suite
+TOKENSAVER_LIVE=1 go test ./e2e/ -run Live -v   # real websites, an API and a PDF
+go run ./cmd/tsab                               # real Claude Code sessions, with vs. without tokensaver
 ```
 
-Each should return `200` with the expected JSON/bytes. Try a bad input too (missing
-file part, malformed JSON, unreachable URL) and confirm you get a `4xx` with
-`{ "error": "..." }` rather than a raw `500`.
+- **e2e suite** (`e2e/`, part of `go test ./...`): builds the binary and talks to
+  it over stdio exactly as an agent does. The sources are a local test site (a
+  docs page wrapped in the usual framework payload, a Wikipedia-style article, a
+  GitHub-style JSON API, a JavaScript app, redirects, legacy charsets, error
+  pages) and generated PDF, DOCX, XLSX and PPTX files. It checks that content
+  survives, clutter is gone, paging never loses or repeats a paragraph, errors
+  are clear, concurrent calls agree, and the tool definitions stay within their
+  token budget. With `-v` it prints a savings table.
+- **Live benchmark**: the same checks against real sources (the table above).
+  It needs the network, and the sites change over time.
+- **A/B harness** (`cmd/tsab`): asks Claude Code the same nine questions twice.
+  The questions cover Wikipedia, MDN, pkg.go.dev, a GitHub README, the GitHub
+  API, an arXiv PDF, a Word report and a 400-row spreadsheet. One arm has only
+  Claude Code's built-in tools (WebFetch, Read, Bash); the other has the same
+  tools plus tokensaver. The harness reports Claude Code's own token counts
+  and cost for every session, and the fixed per-request cost of tokensaver's
+  tool definitions. It grades answers by string match and saves every
+  transcript under `ab-results/`. Each session is a real `claude -p` run billed
+  to your account: a full run is roughly $2–5 on Sonnet. `-only`, `-runs` and
+  `-budget` control the spend. It needs a signed-in CLI (`claude auth login`).
 
-### 2. MCP tool test (through an actual agent)
-
-Register the connector once per project you'll test from:
+## Development
 
 ```bash
-claude mcp add --transport http tokensaver http://localhost:8080/mcp
+go test -short ./...                # skip the binary builds and Chrome tests
+go run ./cmd/tsdev read https://go.dev/doc/effective_go outline=true
+go run ./cmd/tsdev read_json ./data.json select='items.{id,name}' table=true
+go run ./cmd/tsdev tools            # the tool schemas and what they cost per request
 ```
 
-Then, in a **fresh** Claude Code session (`/clear` or a new session — an existing
-session won't pick up a connector added after it started) in that project, run `/mcp`
-to confirm `tokensaver` shows up with 4 tools, then try:
+`tsdev` calls the tools in-process through a real MCP client and prints the result
+with its size; it is a development aid, not part of the installed product.
 
-```
-Fetch https://example.com with tokensaver and summarize the page
-Convert this JSON to YAML using tokensaver: {"name": "Milan", "role": "developer"}
-Diff these two JSON objects using tokensaver: {"a":1,"b":2} and {"a":1,"b":3,"c":4}
-Use tokensaver to evaluate =SUM(A1:A3)*2 with A1=2, A2=3, A3=4
-```
-
-These should show up as native tool calls (`web_extract`, `convert_data`, `diff_data`,
-`evaluate_formula`), not a curl command or a written script.
-
-### 3. File-operation fallback test (the important one)
-
-File operations are deliberately *not* MCP tools (see below), so this checks that an
-agent correctly falls back to curl instead of trying to read the file itself:
-
-```
-Extract the text from /path/to/some/file.pdf using tokensaver
+```text
+cmd/tokensaver     the stdio MCP server binary
+cmd/tsdev          development harness
+cmd/tsab           A/B harness (real Claude Code sessions)
+e2e/               end-to-end suite and live benchmark
+internal/server    MCP tools, caching, request handling
+internal/source    loading URLs/files, type detection, charset handling
+internal/convert   HTML, PDF, DOCX, XLSX, PPTX → Markdown
+internal/browser   optional headless Chrome rendering
+internal/jsonshrink  order-preserving JSON, select, shrinking, tables, shape
+internal/view      outline, sections, paging
+internal/testdoc   documents generated in code for tests and benchmarks
 ```
 
-Watch for: no attempt to read the file's bytes or base64-encode it, and no probing for
-a health-check endpoint first — it should go straight to
-`curl -F "file=@/path/to/some/file.pdf" http://localhost:8080/api/files/extract-text`.
-If it hesitates or guesses at the base URL, check `tokensaver.public-base-url` is set
-correctly for your deployment (see above).
+`.claude/agents/` holds Claude Code subagents that each own one module (web, PDF,
+Office, JSON, MCP server) and know its tests and pitfalls — ask Claude Code to use
+the matching agent when something in that area breaks.
 
-### 4. Measuring whether this actually saves tokens
+## Roadmap
 
-`/cost` in Claude Code (or the Anthropic API's `usage` field) is the only reliable way
-to see real token numbers — the consumer chat UI doesn't expose this. Compare the same
-task run twice in fresh sessions:
+- Headings detected in PDFs (from font sizes) for a real outline instead of pages
+- OCR for scanned PDFs and images (optional `tesseract`)
+- Audio transcription (optional `whisper.cpp`)
+- EPUB, ZIP archives, RSS/Atom feeds
+- Optional per-host auth headers for private APIs (from a local config file, never
+  passed through the model)
 
-- **With tokensaver**: connector added, run one of the prompts above, then `/cost`.
-- **Without tokensaver** (baseline): a session with no tokensaver connector, asking the
-  same thing but forcing a script, e.g. `"Extract the text from X.pdf — write and run a
-  script to do it."`, then `/cost`.
+## License
 
-Repeat a few times per task — script-writing has variance (sometimes it one-shots,
-sometimes it debugs an import error) — and check the output is actually correct in
-both runs, not just cheaper.
-
-This whole comparison is automated in `scripts/mcp_ab_test.py`, using Claude Code's
-non-interactive mode (`claude -p --output-format json`) to run both variants of each
-case N times and report average cost/tokens without any manual `/cost` checking. See
-`TESTING.md` → "MCP: loading it, using it in a prompt, and using it without it" for
-the full walkthrough (including exactly how the connector gets loaded/unloaded for a
-clean comparison) and the automation's safety notes.
-
-## REST endpoints
-
-### Web extraction
-`POST /api/web/extract`
-```json
-{ "url": "https://example.com/article" }
-```
-Fetches the page, strips nav/scripts/ads/boilerplate, returns `{ url, title, text, markdown }`.
-Refuses localhost/private/link-local targets (SSRF guard).
-
-### File → text extraction
-`POST /api/files/extract-text` (multipart `file`: `.pdf`, `.docx`, `.xlsx`, `.txt`, `.md`, `.csv`)
-Returns `{ "text": "..." }`.
-
-### Image conversion
-`POST /api/files/image/convert?format=jpg&width=200&height=200` (multipart `file`)
-Returns the converted image bytes directly.
-
-### Data format conversion
-`POST /api/data/convert`
-```json
-{ "input": "{\"a\":1}", "from": "json", "to": "yaml" }
-```
-Supports `json`, `yaml`, `csv` in any direction (CSV requires an array of flat objects).
-
-### OCR
-`POST /api/files/ocr` (multipart `file`: an image, or a scanned `.pdf`)
-Returns `{ "text": "..." }` via the locally installed Tesseract CLI. **Requires
-`tesseract` on PATH** (`brew install tesseract` on macOS, `apt install tesseract-ocr`
-on Debian/Ubuntu) — this is the one endpoint with a system dependency beyond the JVM.
-
-### Diff
-`POST /api/data/diff`
-```json
-{ "left": "...", "right": "...", "format": "text" }
-```
-`format: text` returns a unified diff string. `format: json` or `yaml` parses both
-sides and returns a list of `{ path, type, before, after }` changes (`type` is
-`added`, `removed`, or `changed`).
-
-### Spreadsheet formula evaluation
-`POST /api/sheet/evaluate`
-```json
-{ "cells": { "A1": "5", "A2": "10" }, "formula": "=A1+A2" }
-```
-Evaluates the formula against the given cell values via Apache POI's formula engine.
-Returns `{ "result": "15" }`.
-
-### Audio transcription
-`POST /api/audio/transcribe?model=base` (multipart `file`: any audio format ffmpeg reads)
-Returns `{ "text": "..." }` via the locally installed Whisper CLI. **Requires
-`whisper` on PATH** (`pip install openai-whisper`, plus `ffmpeg`). `model` is one of
-`tiny`/`base`/`small`/`medium`/`large` (default `base`) — larger models are slower but
-more accurate, and are downloaded once on first use.
-
-### Markdown/HTML rendering
-`POST /api/render/html`
-```json
-{ "content": "# Hello", "sourceType": "markdown", "format": "pdf" }
-```
-Renders Markdown or HTML headlessly and returns the file's bytes (`format`: `pdf` or
-`png`). **Requires `wkhtmltopdf`/`wkhtmltoimage` on PATH**.
-
-### Barcode / QR generate & decode
-`POST /api/barcode/generate`
-```json
-{ "text": "hello", "format": "QR_CODE", "width": 300, "height": 300 }
-```
-Returns a PNG. `format` is any ZXing `BarcodeFormat` (`QR_CODE`, `CODE_128`, `EAN_13`,
-`UPC_A`, `PDF_417`, ...), default `QR_CODE`.
-
-`POST /api/barcode/decode` (multipart `file`: an image containing a code)
-Returns `{ "text": "...", "format": "..." }`.
-
-### PDF manipulation
-- `POST /api/pdf/merge` (multipart `files`, repeatable, ≥2) → merged PDF bytes
-- `POST /api/pdf/split?pagesPerFile=1` (multipart `file`) → a `.zip` of PDF chunks
-- `POST /api/pdf/rotate?degrees=90` (multipart `file`) → rotated PDF bytes (`degrees`
-  must be a multiple of 90)
-- `POST /api/pdf/watermark?text=DRAFT` (multipart `file`) → PDF with a diagonal text
-  watermark stamped on every page
-- `POST /api/pdf/fill-form` (multipart `file`, plus a `fields` part with a JSON object
-  like `{"name":"John"}`) → PDF with its AcroForm fields filled in
-
-## Fixing a broken API
-
-Every endpoint's test scenarios live in `TESTING.md`. Each API module also has a
-dedicated Claude Code subagent in `.claude/agents/` — `web-api`, `files-api`,
-`pdf-api`, `data-api`, `audio-api`, `render-api`, `barcode-api`, `sheet-api` — scoped
-to that module's exact files, with the failure modes already
-hit once during development written down so they don't need rediscovering. When a
-scenario in `TESTING.md` fails, hand it to the matching agent (e.g. "the pdf-api agent
-should look at this: `/api/pdf/merge` returns a corrupted file for 3+ inputs") instead
-of debugging cold.
-
-## Design notes
-
-- Every module (`web`, `files`, `data`, `audio`, `render`, `barcode`, `sheet`) is a
-  self-contained package: a `*Service` with the actual logic and a thin `*Controller`.
-  Adding a new REST API means adding a new package in this shape — no shared framework
-  beyond `common/ApiException` + `common/GlobalExceptionHandler`. `util/ArchiveService`
-  is the one exception: it's not its own API (plain zip/unzip was removed — trivial to
-  do locally, not worth a network round-trip), just an internal helper `pdf-api`'s
-  split endpoint uses to bundle its output chunks.
-- `mcp/McpToolsConfiguration` registers MCP tools on a servlet mounted at `/mcp`
-  (Streamable HTTP transport). Each tool handler forwards to the matching REST
-  endpoint via `mcp/LoopbackApiClient` (a plain `java.net.http.HttpClient` call to
-  `http://localhost:<port>/api/...`) rather than calling service beans directly — the
-  REST controllers stay the one real implementation, MCP is just a protocol adapter in
-  front of them. Adding a tool here means adding one method that builds a
-  `McpSchema.Tool` and calls the matching REST endpoint through the client — but only
-  for endpoints with no file content; see above for why file-based endpoints stay
-  REST-only.
-- The MCP SDK's internal JSON handling is Jackson 3 ("tools.jackson"), which needs a
-  newer `jackson-annotations` than Spring Boot manages by default — pinned explicitly
-  in `pom.xml` to avoid a `NoSuchFieldError` at startup.
-- Errors from bad input (unreachable URL, unsupported format, malformed file) return
-  `400` with `{ "error": "..." }` from the REST API, and surface as an `isError` tool
-  result on the MCP side — agents can branch on that instead of parsing stack traces.
-
-## Ideas for the next batch of APIs (not yet built)
-
-- EXIF read/strip, audio/video metadata (duration, codec)
-- JSON Schema validation, JSONPath/XPath query
-- Unit conversion, timezone conversion, cron expression parsing
-- Checksum verification, archive formats beyond zip (tar.gz)
-
-## Explicitly out of scope for this stage
-
-- Authentication, rate limiting, usage plans/billing
-- Persistence / job queues for long-running work
-- Any endpoint whose implementation calls an LLM
+MIT — see [LICENSE](LICENSE). The binary embeds PDFium (BSD-3-Clause / Apache-2.0)
+via [go-pdfium](https://github.com/klippa-app/go-pdfium); other dependencies are
+listed in `go.mod` and carry their own permissive licenses.

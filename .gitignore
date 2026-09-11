@@ -1,13 +1,19 @@
-target/
-*.class
+# Built binaries
+/tokensaver
+/tsdev
+/dist/
+*.exe
+
+# Go test/coverage output
+*.test
+*.out
+coverage.*
 
 .idea/
 *.iml
 .vscode/
-
 .DS_Store
-
 *.log
 
-.ab-results/
-__pycache__/
+# A/B harness output (reports, transcripts, cached downloads)
+/ab-results/
