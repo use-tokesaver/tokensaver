@@ -30,7 +30,7 @@ go run ./cmd/tsdev read https://arxiv.org/pdf/1706.03762 max_chars=4000
 pdftotext file.pdf - | head -50     # poppler, if installed, as a reference
 ```
 
-Tests build PDFs in code with `makePDF` (fixtures_test.go) — extend it rather than
+Tests build PDFs in code with `testdoc.PDF` (internal/testdoc) — extend it rather than
 committing binary files.
 
 ## Known gotchas
@@ -48,7 +48,7 @@ committing binary files.
 ## Fix workflow
 
 1. Reproduce with tsdev; compare with `pdftotext` when text looks wrong.
-2. Patch the smallest thing; add a `TestPDF…` case using `makePDF` pages that show
+2. Patch the smallest thing; add a `TestPDF…` case using `testdoc.PDF` pages that show
    the problem.
 3. `go test ./internal/convert/ -run PDF` then `go test ./...`.
 4. Report what changed and the before/after output size on the reproducer.

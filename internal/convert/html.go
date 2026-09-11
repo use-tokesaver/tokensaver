@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"codeberg.org/readeck/go-readability/v2"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
@@ -94,6 +96,7 @@ func htmlToMarkdown(raw string, base *url.URL) (*Doc, int, error) {
 	title := strings.TrimSpace(textOf(findFirst(root, atom.Title)))
 	promoteWrappedHeadings(root)
 	removeCitationMarks(root)
+	prepareCodeBlocks(root)
 
 	var content *html.Node
 	parser := readability.NewParser()
@@ -203,6 +206,88 @@ func removeCitationMarks(root *html.Node) {
 		return n.Type == html.ElementNode && n.DataAtom == atom.Sup &&
 			citationRe.MatchString(strings.Join(strings.Fields(textOf(n)), " "))
 	})
+}
+
+// codeLangRes find a code block's language in class conventions the Markdown
+// converter doesn't read (it knows only language-x and lang-x).
+var codeLangRes = []*regexp.Regexp{
+	regexp.MustCompile(`(?:^|\s)brush:\s*([\w+#-]+)`),         // MDN, SyntaxHighlighter
+	regexp.MustCompile(`(?:^|\s)highlight-source-([\w+#-]+)`), // GitHub
+	regexp.MustCompile(`(?:^|\s)sourceCode\s+([\w+#-]+)`),     // pandoc
+}
+
+// wrapperLangRe finds language-x on a highlighter wrapper around the <pre>
+// (Jekyll/rouge: <div class="language-ruby highlighter-rouge">).
+var wrapperLangRe = regexp.MustCompile(`(?:^|\s)language-([\w+#-]+)`)
+
+// prepareCodeBlocks readies <pre> blocks for readability and the converter:
+//   - links inside them become plain text: a Markdown code block can't hold
+//     links anyway, and a linked-up declaration such as pkg.go.dev's
+//     "func Unmarshal(data []byte, v any) error" otherwise looks like a
+//     navigation block to readability, which drops it;
+//   - the block's language, in whatever convention the site uses, is set as
+//     language-x so the fence carries it (```js).
+func prepareCodeBlocks(root *html.Node) {
+	var pres []*html.Node
+	walk(root, func(n *html.Node) {
+		if n.Type == html.ElementNode && n.DataAtom == atom.Pre {
+			pres = append(pres, n)
+		}
+	})
+	for _, pre := range pres {
+		var links []*html.Node
+		walk(pre, func(n *html.Node) {
+			if n.Type == html.ElementNode && n.DataAtom == atom.A {
+				links = append(links, n)
+			}
+		})
+		for _, a := range links {
+			unwrap(a)
+		}
+		if lang := codeLanguage(pre); lang != "" {
+			setAttr(pre, "class", strings.TrimSpace(attr(pre, "class")+" language-"+strings.ToLower(lang)))
+		}
+	}
+}
+
+// codeLanguage returns the language of a <pre> block when it is given in a
+// convention other than language-x / lang-x on the <pre> or its <code>.
+func codeLanguage(pre *html.Node) string {
+	code := findFirst(pre, atom.Code)
+	for _, n := range []*html.Node{pre, code} {
+		if n != nil && (strings.Contains(attr(n, "class"), "language-") || strings.Contains(attr(n, "class"), "lang-")) {
+			return ""
+		}
+	}
+	for _, n := range []*html.Node{pre, code, pre.Parent, parentOf(pre.Parent)} {
+		if n == nil || n.Type != html.ElementNode {
+			continue
+		}
+		for _, key := range []string{"data-lang", "data-language"} {
+			if v := strings.TrimSpace(attr(n, key)); v != "" && !strings.ContainsAny(v, " \t") {
+				return v
+			}
+		}
+		class := attr(n, "class")
+		for _, re := range codeLangRes {
+			if m := re.FindStringSubmatch(class); m != nil {
+				return m[1]
+			}
+		}
+		if n != pre && n != code && strings.Contains(class, "highlight") {
+			if m := wrapperLangRe.FindStringSubmatch(class); m != nil {
+				return m[1]
+			}
+		}
+	}
+	return ""
+}
+
+func parentOf(n *html.Node) *html.Node {
+	if n == nil {
+		return nil
+	}
+	return n.Parent
 }
 
 // dropTags are removed wherever they appear: they carry no readable text, or
@@ -317,8 +402,90 @@ func tidyMarkdown(md string) string {
 		lines[i] = strings.TrimRight(l, " \t")
 	}
 	md = strings.Join(lines, "\n")
+	md = unescapeIntraword(md)
 	return strings.TrimSpace(blankLinesRe.ReplaceAllString(md, "\n\n"))
 }
+
+// unescapeIntraword drops the backslash the converter puts before underscores
+// inside words (max\_tokens, get\_user\_by\_id). CommonMark never reads an
+// intraword underscore as emphasis, so the escape only costs a token and
+// breaks identifiers the model may copy. Code blocks and spans are untouched.
+func unescapeIntraword(md string) string {
+	if !strings.Contains(md, `\_`) {
+		return md
+	}
+	lines := strings.Split(md, "\n")
+	fence := ""
+	for i, l := range lines {
+		t := strings.TrimLeft(l, " ")
+		if fence != "" {
+			if strings.HasPrefix(t, fence) && strings.TrimRight(t, fence[:1]) == "" {
+				fence = ""
+			}
+			continue
+		}
+		if n := len(t) - len(strings.TrimLeft(t, "`")); n >= 3 {
+			fence = t[:n]
+			continue
+		}
+		if n := len(t) - len(strings.TrimLeft(t, "~")); n >= 3 {
+			fence = t[:n]
+			continue
+		}
+		if strings.Contains(l, `\_`) {
+			lines[i] = unescapeLine(l)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func unescapeLine(l string) string {
+	var b strings.Builder
+	for i := 0; i < len(l); {
+		switch {
+		case l[i] == '\\' && i+1 < len(l):
+			prev, _ := utf8.DecodeLastRuneInString(b.String())
+			next, _ := utf8.DecodeRuneInString(l[i+2:])
+			if l[i+1] == '_' && isWordRune(prev) && isWordRune(next) {
+				b.WriteByte('_')
+			} else {
+				b.WriteString(l[i : i+2])
+			}
+			i += 2
+		case l[i] == '`':
+			n := len(l[i:]) - len(strings.TrimLeft(l[i:], "`"))
+			end := closingTicks(l, i+n, n)
+			if end < 0 {
+				end = i + n
+			}
+			b.WriteString(l[i:end])
+			i = end
+		default:
+			b.WriteByte(l[i])
+			i++
+		}
+	}
+	return b.String()
+}
+
+// closingTicks returns the end of the code span that opened with n backticks
+// just before from, or -1 if it is never closed.
+func closingTicks(l string, from, n int) int {
+	for j := from; j < len(l); {
+		if l[j] != '`' {
+			j++
+			continue
+		}
+		m := len(l[j:]) - len(strings.TrimLeft(l[j:], "`"))
+		if m == n {
+			return j + m
+		}
+		j += m
+	}
+	return -1
+}
+
+func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
 
 // --- small html.Node helpers ---
 

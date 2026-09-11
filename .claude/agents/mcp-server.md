@@ -27,6 +27,7 @@ You own `internal/server/`, `internal/view/`, `cmd/tokensaver/` and `cmd/tsdev/`
 go run ./cmd/tsdev tools                         # schemas + their per-request token cost
 go run ./cmd/tsdev read <src> max_chars=1000 page=2
 go test ./cmd/tokensaver/ -run TestStdioBinary -v   # real binary over stdio
+go test ./e2e/ -v                                  # e2e suite over stdio + savings table
 ```
 
 To see exactly what a client sees, the stdio binary logs one line per call to

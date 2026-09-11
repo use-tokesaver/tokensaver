@@ -27,6 +27,8 @@ unless the root cause is genuinely elsewhere — then say why before editing.
 go run ./cmd/tsdev read <url> max_chars=3000      # stderr log shows kind, doc_chars, rendered=
 go run ./cmd/tsdev read <url> outline=true        # are all headings there?
 curl -sL --compressed -A "Mozilla/5.0" <url> > /tmp/page.html && go run ./cmd/tsdev read /tmp/page.html
+TOKENSAVER_LIVE=1 go test ./e2e/ -run Live -v    # real sites: required facts present + savings
+go test ./e2e/ -run DocsPage -v                  # framework-bloated page, exact expected Markdown
 ```
 
 For a local HTML file links resolve against `file://`, so they look different from
@@ -41,6 +43,14 @@ the live URL; that is expected.
   `readability.NewParser().ParseDocument`) and grep the ids/classes around it.
 - Readability converts a `<div>` with no block children into `<p>`; a heading inside
   such a div gets flattened. Unwrap the wrapper, don't special-case the site.
+- Readability also drops short, link-dense blocks ("low weight and a little
+  linky"). That is why links inside `<pre>` are flattened first
+  (`prepareCodeBlocks`): pkg.go.dev's linked-up function signatures vanished.
+- The converter reads a fence language only from `language-x` / `lang-x`;
+  `prepareCodeBlocks` maps other conventions (MDN `brush: js`, GitHub
+  `highlight-source-go`, `data-lang`, pandoc, rouge). Add new ones there.
+- The converter escapes every `_`; `unescapeIntraword` removes the escape inside
+  words (`max_tokens`) outside code. Check escapes with a tsdev run on a docs page.
 - Never modify the tree while walking it (collect nodes first, then change them).
 - Fix generically: a rule that only works for one site is a smell. Add the page
   shape to `TestHTMLArticle` (or a new test) as a minimal HTML snippet.

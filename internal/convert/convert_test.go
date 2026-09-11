@@ -11,6 +11,7 @@ import (
 
 	"github.com/MilanBehnam/tokensaver/internal/browser"
 	"github.com/MilanBehnam/tokensaver/internal/source"
+	"github.com/MilanBehnam/tokensaver/internal/testdoc"
 )
 
 func mustContain(t *testing.T, got string, wants ...string) {
@@ -77,6 +78,53 @@ func TestHTMLArticle(t *testing.T) {
 	}
 }
 
+func TestHTMLCodeBlocks(t *testing.T) {
+	prose := strings.Repeat("Unmarshal parses the JSON-encoded data and stores the result in the value pointed to by v. ", 4)
+	page := `<html><head><title>json package</title></head><body><main><article><h1>json</h1><p>` + prose + `</p>
+<h4 id="Unmarshal">func <a href="https://cs.example/decode.go">Unmarshal</a></h4>
+<div class="Documentation-declaration"><pre>func Unmarshal(data []<a href="/builtin#byte">byte</a>, v <a href="/builtin#any">any</a>) <a href="/builtin#error">error</a></pre></div>
+<p>` + prose + `</p>
+<pre class="brush: js notranslate"><code>const r = await fetch(url);</code></pre>
+<div class="highlight highlight-source-go notranslate"><pre>fmt.Println("hi")</pre></div>
+<pre><code class="language-go" data-lang="go">var x = 1</code></pre>
+<pre><code data-lang="Python">print(1)</code></pre>
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code>puts 1</code></pre></div></div>
+<p>` + prose + `</p></article></main></body></html>`
+	base, _ := url.Parse("https://pkg.example/encoding/json")
+	doc, _, err := htmlToMarkdown(page, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustContain(t, doc.Markdown,
+		"```\nfunc Unmarshal(data []byte, v any) error\n```", // links flattened, so readability keeps it
+		"```js\nconst r = await fetch(url);\n```",
+		"```go\nfmt.Println(\"hi\")\n```",
+		"```go\nvar x = 1\n```",
+		"```python\nprint(1)\n```",
+		"```ruby\nputs 1\n```",
+	)
+}
+
+func TestUnescapeIntraword(t *testing.T) {
+	cases := map[string]string{
+		`set max\_tokens and get\_user\_by\_id`:  `set max_tokens and get_user_by_id`,
+		`MAX\_RETRIES, café\_au\_lait, x86\_64`:  `MAX_RETRIES, café_au_lait, x86_64`,
+		`\_private and trailing\_ stay escaped`:  `\_private and trailing\_ stay escaped`,
+		`\_\_dunder\_\_ and a\*b`:                `\_\_dunder\_\_ and a\*b`,
+		"`in\\_code` but out\\_side":             "`in\\_code` but out_side",
+		"``a`b\\_c`` d\\_e":                      "``a`b\\_c`` d_e",
+		"\\`not\\_code\\`":                       "\\`not_code\\`",
+		"C:\\\\Users\\\\x\\_y":                   "C:\\\\Users\\\\x_y",
+		"```\nraw\\_code\n```\nafter\\_fence":    "```\nraw\\_code\n```\nafter_fence",
+		"````md\n```\nstill\\_code\n````\nx\\_y": "````md\n```\nstill\\_code\n````\nx_y",
+	}
+	for in, want := range cases {
+		if got := unescapeIntraword(in); got != want {
+			t.Errorf("unescapeIntraword(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestHTMLFallsBackToBodyWithoutArticle(t *testing.T) {
 	page := `<html><head><title>Tiny</title></head><body><nav>Menu stuff</nav><p>Just one short line.</p><footer>foot</footer></body></html>`
 	base, _ := url.Parse("https://x.dev/")
@@ -103,7 +151,7 @@ func TestPDF(t *testing.T) {
 	}
 	pages[2] = "ACME Quarterly Report 2026\n# of units shipped: 12\n5" // a short page
 	pages = append(pages, "Short page.\n42")                           // 42 is not a page number
-	doc, err := convertPDF(context.Background(), makePDF("Q3 Report", pages))
+	doc, err := convertPDF(context.Background(), testdoc.PDF("Q3 Report", pages))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +171,7 @@ func TestPDF(t *testing.T) {
 }
 
 func TestDOCX(t *testing.T) {
-	doc, err := convertDOCX(makeDOCX(t))
+	doc, err := convertDOCX(testdoc.SampleDOCX())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +190,7 @@ func TestDOCX(t *testing.T) {
 }
 
 func TestPPTX(t *testing.T) {
-	doc, err := convertPPTX(makePPTX(t))
+	doc, err := convertPPTX(testdoc.SamplePPTX())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +201,7 @@ func TestPPTX(t *testing.T) {
 }
 
 func TestXLSX(t *testing.T) {
-	doc, err := convertXLSX(makeXLSX(t))
+	doc, err := convertXLSX(testdoc.SampleXLSX())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,10 +215,10 @@ func TestXLSX(t *testing.T) {
 
 func TestConvertDetectsFromBytes(t *testing.T) {
 	cases := map[source.Kind][]byte{
-		source.PDF:  makePDF("t", []string{"hello pdf"}),
-		source.DOCX: makeDOCX(t),
-		source.PPTX: makePPTX(t),
-		source.XLSX: makeXLSX(t),
+		source.PDF:  testdoc.PDF("t", []string{"hello pdf"}),
+		source.DOCX: testdoc.SampleDOCX(),
+		source.PPTX: testdoc.SamplePPTX(),
+		source.XLSX: testdoc.SampleXLSX(),
 	}
 	for want, data := range cases {
 		s := &source.Source{Path: "download.bin", Data: data}

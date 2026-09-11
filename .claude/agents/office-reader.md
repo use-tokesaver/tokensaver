@@ -28,8 +28,9 @@ go run ./cmd/tsdev read /path/to/file.docx
 mkdir /tmp/x && cd /tmp/x && unzip -o /path/to/file.docx && ls -R   # inspect the XML
 ```
 
-Fixtures are built in code in `fixtures_test.go` (`makeDOCX`, `makePPTX`,
-`makeXLSX`). Reproduce a bug by adding the smallest XML that triggers it there.
+Fixtures are built in code in `internal/testdoc` (`SampleDOCX`, `SamplePPTX`,
+`SampleXLSX`, the `W…` Word builders, the larger `ReportDOCX` / `InventoryXLSX`).
+Reproduce a bug by adding the smallest XML that triggers it there.
 
 ## Known gotchas
 
