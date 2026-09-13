@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f6f3ec"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#1e1b161f" stroke-width="1"/>
+  <rect x="120" y="180" width="72" height="72" rx="16" fill="#c15f3c"/>
+  <path d="M138 216 L158 236 L174 200" fill="none" stroke="#f6f3ec" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="212" y="240" font-family="Inter, sans-serif" font-size="64" font-weight="700" fill="#1e1b16">tokensaver</text>
+  <text x="120" y="360" font-family="'Source Serif 4', Georgia, serif" font-size="30" fill="#6f6a5f">Local MCP server. Fewer tokens, every page.</text>
+  <text x="120" y="560" font-family="'JetBrains Mono', monospace" font-size="20" fill="#c15f3c">npx tokensaver@latest</text>
+</svg>

@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tokensaver Site — style-tile prototype</title>
+<!--
+  PROTOTYPE — wayfinder ticket 02 (docs/wayfinder/tickets/02-visual-design-system.md).
+  Plan: three radically different visual-design-system variants for tokensaver's Site,
+  switchable via ?variant=A|B|C, as a standalone style-tile page — sub-shape B, since
+  /site has no existing page yet to host variants inside of (greenfield).
+
+  Outcome: Variant C ("Terminal") was chosen as the Site's design system — see the
+  ticket's Resolution for the concrete tokens. Kept here deliberately (not moved to a
+  throwaway branch, not trimmed to the winner) as a running demo of all three directions.
+  Not production code. Double-click this file to run; no build step.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; }
+
+  .proto-banner {
+    position: sticky; top: 0; z-index: 50;
+    background: #111; color: #ffd23f; font: 600 12px/1.4 monospace;
+    text-align: center; padding: 6px 12px; letter-spacing: .02em;
+  }
+
+  .variant { display: none; }
+  .variant.active { display: block; }
+
+  .section { padding: 48px 6vw; }
+  .section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; opacity: .6; margin: 0 0 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .swatch { width: 120px; }
+  .swatch .chip { height: 72px; border-radius: 10px; margin-bottom: 6px; }
+  .swatch .label { font: 500 12px/1.3 monospace; opacity: .75; }
+  .concept-label { font: 700 11px/1 monospace; text-transform: uppercase; letter-spacing: .08em; padding: 4px 10px; border-radius: 999px; display: inline-block; }
+
+  /* ============ shared switcher bar ============ */
+  .switcher {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    background: #14141c; color: #fff; padding: 10px 18px; border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 100;
+    font: 600 13px/1 -apple-system, sans-serif;
+  }
+  .switcher button {
+    background: rgba(255,255,255,.12); color: #fff; border: none; border-radius: 999px;
+    width: 30px; height: 30px; cursor: pointer; font-size: 16px; line-height: 1;
+  }
+  .switcher button:hover { background: rgba(255,255,255,.24); }
+  .switcher .vlabel { min-width: 190px; text-align: center; }
+  .switcher .vlabel small { display: block; font-weight: 400; opacity: .6; font-size: 11px; margin-top: 2px; }
+
+  /* theme toggle button used inside variants B/C */
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: var(--r-btn); padding: 8px 14px; font: 600 13px/1 inherit; cursor: pointer;
+  }
+
+  /* =====================================================================
+     VARIANT A — "Anthropic-literal": warm, editorial, close port of the
+     researched anthropic.com tokens. Dark mode = a flipped section band,
+     NOT a page-wide toggle (mirrors anthropic.com's own actual pattern).
+     ===================================================================== */
+  #variant-A {
+    --bg:#faf9f5; --text:#141413; --card:#ffffff; --border:rgba(20,20,19,.12);
+    --accent:#d97757; --accent2:#c6613f;
+    --band-bg:#141413; --band-text:#faf9f5; --band-card:#3d3d3a;
+    background: var(--bg); color: var(--text);
+    font-family: "Source Serif 4", Georgia, serif;
+  }
+  #variant-A h1, #variant-A h2, #variant-A .heading, #variant-A .wordmark { font-family: "Inter", Arial, sans-serif; }
+  #variant-A .hero { padding: 96px 6vw 64px; }
+  #variant-A .wordmark { font-weight: 700; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  #variant-A .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); position: relative; }
+  #variant-A .mark::after {
+    content: ""; position: absolute; inset: 9px 9px 13px; border-left: 2px solid var(--bg);
+    border-bottom: 2px solid var(--bg); transform: rotate(-45deg);
+  }
+  #variant-A .hero h1 { font-size: 3rem; font-weight: 700; line-height: 1.1; margin: 24px 0 12px; max-width: 16ch; }
+  #variant-A .hero p { font-size: 1.25rem; line-height: 1.4; max-width: 40ch; opacity: .8; }
+  #variant-A .type-sample { margin-bottom: 18px; }
+  #variant-A .type-sample .tag { font: 600 11px/1 "Inter", sans-serif; opacity: .5; text-transform: uppercase; letter-spacing: .06em; }
+  #variant-A .space-track { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
+  #variant-A .space-bar { background: var(--accent); }
+  #variant-A .radius-row .box { background: var(--card); border: 1px solid var(--border); }
+  #variant-A .band {
+    background: var(--band-bg); color: var(--band-text); border-radius: 24px; padding: 40px;
+    display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  #variant-A .band .btn { background: var(--band-text); color: var(--band-bg); border: none; border-radius: 8px; padding: 10px 20px; font: 600 14px/1 "Inter", sans-serif; }
+  #variant-A .favicon-box { width: 32px; height: 32px; border-radius: 7px; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px/1 "Inter", sans-serif; }
+  #variant-A .concept-label { background: var(--accent); color: var(--bg); }
+
+  /* =====================================================================
+     VARIANT B — "Signal": cooler, savings-green accent, real user-toggled
+     light/dark theme (a deliberate departure from anthropic.com's own
+     band-flip-only pattern), sans+mono pairing instead of serif body.
+     ===================================================================== */
+  #variant-B {
+    --bg:#f5f7fa; --text:#12151b; --card:#ffffff; --border:rgba(18,21,27,.10); --accent:#16a34a;
+    --r-chip:6px; --r-btn:10px; --r-card:14px;
+    background: var(--bg); color: var(--text); font-family: "Inter", Arial, sans-serif;
+    transition: background .2s, color .2s;
+  }
+  #variant-B[data-theme="dark"] { --bg:#0f1115; --text:#eef1f5; --card:#1a1d24; --border:rgba(255,255,255,.10); --accent:#22c55e; }
+  #variant-B .heading, #variant-B .wordmark { font-family: "Space Grotesk", "Inter", sans-serif; }
+  #variant-B code, #variant-B .mono { font-family: "JetBrains Mono", monospace; }
+  #variant-B .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 6vw; }
+  #variant-B .wordmark { font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  #variant-B .mark { width: 28px; height: 28px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); background: var(--accent); position: relative; }
+  #variant-B .mark::after { content: "↓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--bg); font-size: 14px; font-weight: 700; }
+  #variant-B .hero { padding: 40px 6vw 64px; }
+  #variant-B .hero h1 { font-size: 2.75rem; font-weight: 700; line-height: 1.15; margin: 0 0 12px; max-width: 18ch; }
+  #variant-B .hero p { font-size: 1.05rem; opacity: .7; max-width: 42ch; }
+  #variant-B .swatch .chip { border-radius: var(--r-chip); }
+  #variant-B .radius-row .box { background: var(--card); border: 1px solid var(--border); }
+  #variant-B .space-track { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+  #variant-B .space-bar { background: var(--accent); border-radius: 3px 3px 0 0; }
+  #variant-B .card-demo { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-card); padding: 24px; max-width: 360px; }
+  #variant-B .badge { font-family: "JetBrains Mono", monospace; font-size: 12px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); padding: 2px 8px; border-radius: 999px; }
+  #variant-B .favicon-box { width: 32px; height: 32px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--bg); font-weight: 700; }
+  #variant-B .concept-label { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+
+  /* =====================================================================
+     VARIANT C — "Terminal": stark, monospace-only, sharp corners
+     everywhere (deliberately anti-Anthropic), solid (not opacity) hairline
+     borders, dark-first with a light toggle.
+     ===================================================================== */
+  #variant-C {
+    --bg:#0a0a0a; --text:#e5e5e5; --card:#141414; --border:#2a2a2a; --accent:#00e676;
+    background: var(--bg); color: var(--text); font-family: "JetBrains Mono", monospace;
+    transition: background .2s, color .2s;
+  }
+  #variant-C[data-theme="light"] { --bg:#ffffff; --text:#0a0a0a; --card:#f5f5f5; --border:#000000; --accent:#008a3e; }
+  #variant-C * { border-radius: 0 !important; }
+  #variant-C .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 6vw; border-bottom: 1px solid var(--border); }
+  #variant-C .wordmark { font-weight: 700; font-size: 18px; }
+  #variant-C .wordmark .cursor { display: inline-block; width: 9px; height: 18px; background: var(--accent); margin-left: 2px; animation: blink 1s steps(1) infinite; vertical-align: -3px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #variant-C .hero { padding: 56px 6vw; }
+  #variant-C .hero h1 { font-size: 2.2rem; font-weight: 700; margin: 0 0 12px; }
+  #variant-C .hero h1::before { content: "$ "; color: var(--accent); }
+  #variant-C .hero p { opacity: .7; max-width: 60ch; line-height: 1.5; }
+  #variant-C .radius-row .box { background: var(--card); border: 1px solid var(--border); }
+  #variant-C .space-track { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
+  #variant-C .space-bar { background: var(--accent); }
+  #variant-C .prompt-block { background: var(--card); border: 1px solid var(--border); padding: 16px 20px; max-width: 420px; }
+  #variant-C .prompt-block .l::before { content: "> "; color: var(--accent); }
+  #variant-C .favicon-box { width: 32px; height: 32px; background: #000; border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 700; }
+  #variant-C[data-theme="light"] .favicon-box { background: #fff; }
+  #variant-C .concept-label { background: var(--accent); color: #000; }
+</style>
+</head>
+<body>
+  <div class="proto-banner">PROTOTYPE — throwaway (wayfinder ticket 02, visual design system). Not production code.</div>
+
+  <!-- ============ VARIANT A ============ -->
+  <main id="variant-A" class="variant" data-name="Anthropic-literal">
+    <div class="hero">
+      <div class="wordmark"><span class="mark"></span>tokensaver</div>
+      <span class="concept-label">anthropic-literal · band-flip dark mode</span>
+      <h1>Fewer tokens reach the model.</h1>
+      <p>A close port of anthropic.com's actual tokens: ivory + near-black, a sparse terracotta accent, sans headings over serif body — editorial, not SaaS.</p>
+    </div>
+
+    <div class="section">
+      <h2>Palette</h2>
+      <div class="row">
+        <div class="swatch"><div class="chip" style="background:#faf9f5;border:1px solid #14141320"></div><div class="label">bg #faf9f5</div></div>
+        <div class="swatch"><div class="chip" style="background:#141413"></div><div class="label">text #141413</div></div>
+        <div class="swatch"><div class="chip" style="background:#ffffff;border:1px solid #14141320"></div><div class="label">card #ffffff</div></div>
+        <div class="swatch"><div class="chip" style="background:#d97757"></div><div class="label">accent #d97757</div></div>
+        <div class="swatch"><div class="chip" style="background:#c6613f"></div><div class="label">accent2 #c6613f</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Typography — Inter (heading/UI) + Source Serif 4 (body)</h2>
+      <div class="type-sample"><div class="tag">Heading / 48px / 700</div><div class="heading" style="font-size:48px;font-weight:700;line-height:1.1">Read once, remember always</div></div>
+      <div class="type-sample"><div class="tag">Body / 20px / 400 serif</div><div style="font-size:20px;line-height:1.4;max-width:42ch">Tokensaver converts pages, PDFs, and JSON into compact text so agents spend fewer tokens reading and more thinking.</div></div>
+    </div>
+
+    <div class="section">
+      <h2>Spacing scale (px)</h2>
+      <div class="space-track">
+        <div class="space-bar" style="width:4px;height:4px"></div>
+        <div class="space-bar" style="width:8px;height:8px"></div>
+        <div class="space-bar" style="width:16px;height:16px"></div>
+        <div class="space-bar" style="width:24px;height:24px"></div>
+        <div class="space-bar" style="width:32px;height:32px"></div>
+        <div class="space-bar" style="width:48px;height:48px"></div>
+        <div class="space-bar" style="width:64px;height:64px"></div>
+        <div class="space-bar" style="width:80px;height:80px"></div>
+        <div class="space-bar" style="width:96px;height:96px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Shape</h2>
+      <div class="row radius-row">
+        <div class="box" style="width:60px;height:60px;border-radius:4px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:8px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:16px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:24px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:999px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Dark mode = flipped section band (anthropic.com's own pattern, not a toggle)</h2>
+      <div class="band">
+        <div>
+          <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:22px;margin-bottom:6px">Try it in Claude Code</div>
+          <div style="opacity:.75;max-width:40ch">This band flips to the dark tokens for rhythm — the rest of the page stays light. No user toggle.</div>
+        </div>
+        <button class="btn">Install →</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Favicon</h2>
+      <div class="favicon-box">t</div>
+    </div>
+  </main>
+
+  <!-- ============ VARIANT B ============ -->
+  <main id="variant-B" class="variant" data-name="Signal (real toggle)">
+    <div class="topbar">
+      <div class="wordmark"><span class="mark"></span>tokensaver</div>
+      <button class="theme-toggle" data-toggle-for="variant-B">Toggle theme</button>
+    </div>
+    <span class="concept-label" style="margin-left:6vw">signal · cool, savings-green · real light/dark toggle</span>
+
+    <div class="hero">
+      <h1>Every page, fewer tokens.</h1>
+      <p>A cooler, denser dev-tool palette with a real user-toggleable dark theme — a deliberate departure from anthropic.com's band-flip-only approach.</p>
+    </div>
+
+    <div class="section">
+      <h2>Palette (live — toggle above)</h2>
+      <div class="row">
+        <div class="swatch"><div class="chip" style="background:var(--bg);border:1px solid var(--border)"></div><div class="label mono">bg</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--text)"></div><div class="label mono">text</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--card);border:1px solid var(--border)"></div><div class="label mono">card</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--accent)"></div><div class="label mono">accent</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Typography — Space Grotesk (heading) + Inter (body) + JetBrains Mono (data)</h2>
+      <div class="type-sample"><div class="heading" style="font-size:44px;font-weight:700;line-height:1.15">Signal, not noise</div></div>
+      <div class="type-sample" style="font-size:18px;line-height:1.5;max-width:44ch;margin:10px 0">Local, no LLM calls, no cloud round-trip. <span class="badge">read()</span> <span class="badge">read_json()</span></div>
+    </div>
+
+    <div class="section">
+      <h2>Spacing scale (px, denser grid)</h2>
+      <div class="space-track">
+        <div class="space-bar" style="width:4px;height:4px"></div>
+        <div class="space-bar" style="width:8px;height:8px"></div>
+        <div class="space-bar" style="width:16px;height:16px"></div>
+        <div class="space-bar" style="width:24px;height:24px"></div>
+        <div class="space-bar" style="width:32px;height:32px"></div>
+        <div class="space-bar" style="width:48px;height:48px"></div>
+        <div class="space-bar" style="width:64px;height:64px"></div>
+        <div class="space-bar" style="width:96px;height:96px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Shape</h2>
+      <div class="row radius-row">
+        <div class="box" style="width:60px;height:60px;border-radius:6px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:10px"></div>
+        <div class="box" style="width:60px;height:60px;border-radius:14px"></div>
+        <div class="box" style="width:120px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px" class="mono">pill</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Card component</h2>
+      <div class="card-demo">
+        <div style="font-weight:700;margin-bottom:8px">Install</div>
+        <div class="mono" style="font-size:13px;opacity:.8">npx tokensaver@latest</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Favicon</h2>
+      <div class="favicon-box"></div>
+    </div>
+  </main>
+
+  <!-- ============ VARIANT C ============ -->
+  <main id="variant-C" class="variant" data-name="Terminal (dark-first, sharp)">
+    <div class="topbar">
+      <div class="wordmark">tokensaver<span class="cursor"></span></div>
+      <button class="theme-toggle" data-toggle-for="variant-C" style="border-radius:0">toggle</button>
+    </div>
+    <span class="concept-label" style="margin-left:6vw">terminal · stark, all-monospace · dark-first, sharp corners</span>
+
+    <div class="hero">
+      <h1>tokensaver --shrink</h1>
+      <p>All monospace, zero rounding, solid (not tinted) hairlines — the opposite of Anthropic's soft, editorial system. A CLI-tool aesthetic for a tool that lives in an agent's stdio pipe.</p>
+    </div>
+
+    <div class="section">
+      <h2>Palette (live — toggle above)</h2>
+      <div class="row">
+        <div class="swatch"><div class="chip" style="background:var(--bg);border:1px solid var(--border)"></div><div class="label">bg</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--text)"></div><div class="label">text</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--card);border:1px solid var(--border)"></div><div class="label">card</div></div>
+        <div class="swatch"><div class="chip" style="background:var(--accent)"></div><div class="label">accent</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Typography — JetBrains Mono only (heading + body)</h2>
+      <div class="type-sample"><div style="font-size:36px;font-weight:700">$ read(url) → text</div></div>
+      <div class="type-sample" style="font-size:16px;line-height:1.5;max-width:60ch;opacity:.8">No serif, no sans — one face at every size. Hierarchy comes from weight and the accent color alone.</div>
+    </div>
+
+    <div class="section">
+      <h2>Spacing scale (px, tight)</h2>
+      <div class="space-track">
+        <div class="space-bar" style="width:4px;height:4px"></div>
+        <div class="space-bar" style="width:8px;height:8px"></div>
+        <div class="space-bar" style="width:12px;height:12px"></div>
+        <div class="space-bar" style="width:16px;height:16px"></div>
+        <div class="space-bar" style="width:24px;height:24px"></div>
+        <div class="space-bar" style="width:32px;height:32px"></div>
+        <div class="space-bar" style="width:48px;height:48px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Shape — sharp everywhere (0px)</h2>
+      <div class="row radius-row">
+        <div class="box" style="width:60px;height:60px"></div>
+        <div class="box" style="width:60px;height:60px"></div>
+        <div class="box" style="width:120px;height:36px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Prompt block</h2>
+      <div class="prompt-block">
+        <div class="l">tokensaver read https://example.com</div>
+        <div class="l" style="opacity:.6">→ 812 tokens (was 6,240)</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Favicon</h2>
+      <div class="favicon-box">&gt;</div>
+    </div>
+  </main>
+
+  <div class="switcher">
+    <button id="prev" aria-label="Previous variant">←</button>
+    <div class="vlabel"><span id="vkey">A</span><small id="vname">Anthropic-literal</small></div>
+    <button id="next" aria-label="Next variant">→</button>
+  </div>
+
+<script>
+  const ORDER = ['A', 'B', 'C'];
+  const els = { A: document.getElementById('variant-A'), B: document.getElementById('variant-B'), C: document.getElementById('variant-C') };
+
+  function currentVariant() {
+    const p = new URLSearchParams(location.search).get('variant');
+    return ORDER.includes(p) ? p : 'A';
+  }
+
+  function render(key) {
+    ORDER.forEach(k => els[k].classList.toggle('active', k === key));
+    document.getElementById('vkey').textContent = key;
+    document.getElementById('vname').textContent = els[key].dataset.name;
+    const url = new URL(location.href);
+    url.searchParams.set('variant', key);
+    history.replaceState(null, '', url);
+  }
+
+  function step(delta) {
+    const i = ORDER.indexOf(currentVariant());
+    render(ORDER[(i + delta + ORDER.length) % ORDER.length]);
+  }
+
+  document.getElementById('prev').addEventListener('click', () => step(-1));
+  document.getElementById('next').addEventListener('click', () => step(1));
+
+  window.addEventListener('keydown', (e) => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+  });
+
+  document.querySelectorAll('[data-toggle-for]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const root = document.getElementById(btn.dataset.toggleFor);
+      const isDark = root.id === 'variant-B'
+        ? root.dataset.theme !== 'dark'
+        : root.dataset.theme === 'light'; // variant-C is dark-first
+      if (root.id === 'variant-B') root.dataset.theme = isDark ? 'dark' : 'light';
+      if (root.id === 'variant-C') root.dataset.theme = isDark ? 'dark' : 'light';
+    });
+  });
+
+  render(currentVariant());
+</script>
+</body>
+</html>

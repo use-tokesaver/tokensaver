@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>read_json — tokensaver Docs</title>
+<meta name="description" content="The read_json tool: JSON APIs and files, shrunk — select fields, drop keys, cap arrays, render tables.">
+<meta property="og:title" content="read_json — tokensaver Docs">
+<meta property="og:description" content="JSON APIs and files, shrunk — select fields, drop keys, cap arrays, render tables.">
+<meta property="og:image" content="../assets/og-image.svg">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <div class="section-label">Docs</div>
+    <ul>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="install.html">Install</a></li>
+      <li><a href="connect.html">Connect it to your agent</a></li>
+      <li><a href="read.html">read</a></li>
+      <li><a href="read-json.html" class="active">read_json</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+      <li><a href="security.html">Security notes</a></li>
+    </ul>
+  </aside>
+
+  <main class="docs-content">
+    <h1><code>read_json</code> — JSON APIs and files, shrunk</h1>
+
+    <table>
+      <tr><th>Parameter</th><th></th></tr>
+      <tr><td><code>source</code></td><td>URL (HTTP GET) or local file path</td></tr>
+      <tr><td><code>outline</code></td><td>Show the structure — keys, types, array sizes, one example each — instead of the data</td></tr>
+      <tr><td><code>select</code></td><td>Keep only these fields (see below)</td></tr>
+      <tr><td><code>drop_keys</code></td><td>Keys to remove everywhere; names or globs: <code>["*_url", "node_id"]</code></td></tr>
+      <tr><td><code>max_items</code></td><td>Keep only the first N items of every array (<code>… 480 more items</code>)</td></tr>
+      <tr><td><code>drop_lists_over</code></td><td>Replace arrays longer than N with <code>"[480 items omitted]"</code></td></tr>
+      <tr><td><code>max_str</code></td><td>Cut strings longer than N characters</td></tr>
+      <tr><td><code>table</code></td><td>Render arrays of objects as Markdown tables</td></tr>
+      <tr><td><code>keep_empty</code></td><td>Keep <code>null</code>, <code>""</code>, <code>[]</code>, <code>{}</code> — by default they are dropped</td></tr>
+      <tr><td><code>page</code>, <code>max_chars</code></td><td>As for <code>read</code></td></tr>
+    </table>
+
+    <h2><code>select</code> syntax</h2>
+    <p>A small, forgiving path language:</p>
+    <pre>total_count                     a field
+items.name                      a field of every element (arrays map implicitly)
+items[0]   items[-1]   items[:5]  index / slice
+items.{name, owner.login}       pick fields → {"name":…, "owner.login":…}
+items.{repo: name, stars: stargazers_count}   pick with aliases
+total_count, items.id           several fields at once
+items[].tags[0]                 explicit [] maps everything after it (first tag of each item)</pre>
+
+    <h2>Example</h2>
+    <pre>read_json source=https://api.github.com/search/repositories?q=mcp outline=true
+→ {total_count: number (12340), items: [30] {id: number, name: string ("github-mcp-server"), owner: {…}, …}}
+
+read_json source=… select="items.{full_name, stargazers_count, description}" max_items=5 table=true
+→ | full_name | stargazers_count | description |
+  |---|---|---|
+  | github/github-mcp-server | 32860 | GitHub's official MCP Server |
+  …</pre>
+
+    <p>JSON output is compact: containers that fit on a line stay on one line; bigger ones put one element per line with one-space indentation — close to minified JSON in tokens, but still readable and pageable. API error responses (4xx/5xx) are returned shrunk, so the agent sees the error message itself.</p>
+
+    <p>Next: <a href="configuration.html">Configuration</a>.</p>
+  </main>
+</div>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>v0.1.0</span>
+</footer>
+
+<script src="../js/theme.js"></script>
+</body>
+</html>

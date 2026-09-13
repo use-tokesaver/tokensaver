@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tokensaver — fewer tokens, every page</title>
+<meta name="description" content="Local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text. No cloud, no LLM calls, one Go binary.">
+<meta property="og:title" content="tokensaver — fewer tokens, every page">
+<meta property="og:description" content="Local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text.">
+<meta property="og:image" content="assets/og-image.svg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="docs/index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>Fewer tokens, every page.</h1>
+  <p class="lede">A local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text — so your coding agent spends its context on content, not markup.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#install">Install →</a>
+    <a class="btn" href="https://github.com/use-tokesaver/tokensaver">View on GitHub</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Why tokensaver</div>
+  <div class="cards">
+    <div class="card">
+      <h3>Local &amp; private</h3>
+      <p>Runs on your machine as a stdio MCP server. Nothing is sent anywhere except the requests to URLs you ask for — no telemetry, no API keys, and it never calls an LLM itself.</p>
+    </div>
+    <div class="card">
+      <h3>No runtime dependencies</h3>
+      <p>One Go binary. PDF extraction uses PDFium compiled to WebAssembly inside the binary. Chrome is used only if installed, for JS-only pages.</p>
+    </div>
+    <div class="card">
+      <h3>Fewer tokens</h3>
+      <p>Clean Markdown or shrunk JSON, paged with an outline so your agent reads just the part it needs. Inspired by Microsoft MarkItDown, rebuilt in Go around one goal.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="install">
+  <div class="section-label">Install</div>
+  <h2>Homebrew (macOS/Linux)</h2>
+  <pre>brew install use-tokesaver/tokensaver/tokensaver</pre>
+  <h2>Connect it to Claude Code</h2>
+  <pre>claude mcp add --scope user tokensaver -- tokensaver</pre>
+  <p>Building from source, or connecting Cursor, Claude Desktop, or another MCP client? See <a href="docs/install.html">Docs → Install</a> and <a href="docs/connect.html">Docs → Connect it to your agent</a>.</p>
+</section>
+
+<section class="section">
+  <div class="section-label">Docs</div>
+  <h2>Everything you need to run it</h2>
+  <p class="lede">Install, configuration, both tools, and security notes — reorganized from the README into a browsable reference.</p>
+  <div class="cards">
+    <div class="card">
+      <h3><a href="docs/install.html">Install</a></h3>
+      <p>Homebrew and from-source, plus the optional Chrome dependency.</p>
+    </div>
+    <div class="card">
+      <h3><a href="docs/read.html">read</a></h3>
+      <p>Web pages, PDF, DOCX, XLSX, PPTX, diffs, and directories → Markdown.</p>
+    </div>
+    <div class="card">
+      <h3><a href="docs/security.html">Security notes</a></h3>
+      <p>What tokensaver can read, and what it never does.</p>
+    </div>
+  </div>
+  <div class="cta-row">
+    <a class="btn" href="docs/index.html">Browse the docs →</a>
+  </div>
+</section>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>v0.1.0</span>
+</footer>
+
+<script src="js/theme.js"></script>
+</body>
+</html>
