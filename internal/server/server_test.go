@@ -224,7 +224,7 @@ func TestReadLocalFiles(t *testing.T) {
 		t.Fatalf("missing file: %v %q", isErr, out)
 	}
 	out, isErr = call(t, cs, "read", map[string]any{"source": dir})
-	if !isErr || !strings.Contains(out, "is a directory") {
-		t.Fatalf("directory: %v %q", isErr, out)
+	if isErr || !strings.Contains(out, "notes.md") || !strings.Contains(out, "data.json") {
+		t.Fatalf("directory tree: %v %q", isErr, out)
 	}
 }

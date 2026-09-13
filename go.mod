@@ -8,6 +8,7 @@ require (
 	github.com/chromedp/chromedp v0.16.0
 	github.com/klippa-app/go-pdfium v1.19.8
 	github.com/modelcontextprotocol/go-sdk v1.7.0
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/net v0.59.0
 )

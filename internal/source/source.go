@@ -130,6 +130,32 @@ func CacheKey(input string) (key string, remote bool) {
 	return fmt.Sprintf("file:%s:%d:%d", abs, st.ModTime().UnixNano(), st.Size()), false
 }
 
+// ResolveDir reports whether input refers to a local directory (a plain path, a
+// file:// URL, or ~-relative), and its resolved path. URLs (http/https) and
+// anything that doesn't exist as a directory return ok=false, so Load's usual
+// handling applies instead.
+func ResolveDir(input string) (path string, ok bool) {
+	input = strings.TrimSpace(input)
+	if u, err := url.Parse(input); err == nil {
+		switch strings.ToLower(u.Scheme) {
+		case "http", "https":
+			return "", false
+		case "file":
+			path = u.Path
+		default:
+			path = input
+		}
+	} else {
+		path = input
+	}
+	path = expandHome(path)
+	st, err := os.Stat(path)
+	if err != nil || !st.IsDir() {
+		return "", false
+	}
+	return path, true
+}
+
 func expandHome(p string) string {
 	if p == "~" || strings.HasPrefix(p, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {

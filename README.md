@@ -101,7 +101,7 @@ on purpose.
 
 | Parameter | |
 |---|---|
-| `source` | URL, or local file path (`~/`, `file://`, and bare `localhost:3000/…` work) |
+| `source` | URL, local file path, or local directory path (`~/`, `file://`, and bare `localhost:3000/…` work) |
 | `outline` | Only list the sections: id, heading, estimated size |
 | `section` | Only return one section — an id from the outline, or heading text |
 | `page` | Page of the output (long output is split at paragraph boundaries) |
@@ -109,7 +109,8 @@ on purpose.
 | `js` | Render in headless Chrome first; happens automatically when a page looks empty |
 
 Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, diff/patch (including
-GitHub PR and commit URLs), and any text file (Markdown, CSV, code, logs…).
+GitHub PR and commit URLs), local directories (as a tree), and any text file
+(Markdown, CSV, code, logs…).
 
 What it does per format:
 
@@ -130,6 +131,11 @@ What it does per format:
   fetched as its underlying diff automatically; local `.diff`/`.patch` files work
   the same way. One `## path (+N -M)` heading per changed file; hunks that only
   change whitespace are dropped with a note instead of shown.
+- **Directories** — a token-aware tree: the root `.gitignore` is respected, `.git`
+  is always skipped, dependency directories (`node_modules`, `vendor`, `dist`,
+  `build`…) and any nested git repo/worktree are collapsed to one line instead of
+  walked, and any other directory with over 100 direct entries collapses to an
+  item count. Files show their size.
 
 Paged output ends with a hint such as `[page 1 of 4 · next: page=2 · outline=true
 lists sections]`. When a table or code block is split across pages, the table

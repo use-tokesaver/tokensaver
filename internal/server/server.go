@@ -16,6 +16,7 @@ import (
 	"github.com/use-tokesaver/tokensaver/internal/convert"
 	"github.com/use-tokesaver/tokensaver/internal/jsonshrink"
 	"github.com/use-tokesaver/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/tree"
 	"github.com/use-tokesaver/tokensaver/internal/view"
 )
 
@@ -25,7 +26,7 @@ import (
 const instructions = `tokensaver turns web pages and files into compact Markdown and shrinks JSON, so far fewer tokens reach the context. Use read for web pages and documents (HTML, PDF, DOCX, XLSX, PPTX) and read_json for JSON APIs and files. Both page long output; outline=true shows structure first.`
 
 type ReadInput struct {
-	Source   string `json:"source" jsonschema:"URL (http/https) or local file path"`
+	Source   string `json:"source" jsonschema:"URL (http/https), local file path, or local directory path"`
 	Outline  bool   `json:"outline,omitempty" jsonschema:"Only list the sections (id, heading, size)"`
 	Section  string `json:"section,omitempty" jsonschema:"Only return this section: an id from outline, or heading text"`
 	Page     int    `json:"page,omitempty" jsonschema:"Page of the output, from 1 (default 1)"`
@@ -61,7 +62,7 @@ func New(version string, logger *slog.Logger) *mcp.Server {
 	readOnly := &mcp.ToolAnnotations{ReadOnlyHint: true}
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "read",
-		Description: "Read a web page or local file (PDF, DOCX, XLSX, PPTX, HTML, JSON, diff/patch, text), including a GitHub PR or commit URL, as clean Markdown: far fewer tokens than raw content. Long output is paged; for big documents use outline=true, then section=<id>.",
+		Description: "Read a web page, local file (PDF, DOCX, XLSX, PPTX, HTML, JSON, diff/patch, text) or local directory (as a gitignore-aware tree) as clean Markdown: far fewer tokens than raw content. Also takes a GitHub PR or commit URL. Long output is paged; for big documents use outline=true, then section=<id>.",
 		Annotations: readOnly,
 	}, h.read)
 	mcp.AddTool(s, &mcp.Tool{
@@ -149,6 +150,15 @@ func (h *handler) loadDoc(ctx context.Context, src string, js, followUp bool) (*
 	key, remote := source.CacheKey(src)
 	key += "|js=" + strconv.FormatBool(js)
 	if e := h.cache.get(key); e != nil && (followUp || !remote) {
+		return e, nil
+	}
+	if dir, ok := source.ResolveDir(src); ok {
+		md, err := tree.Build(dir)
+		if err != nil {
+			return nil, err
+		}
+		e := &cacheEntry{kind: source.Dir, doc: &convert.Doc{Markdown: md}}
+		h.cache.put(key, e)
 		return e, nil
 	}
 	s, err := source.Load(ctx, src, "text/html,application/xhtml+xml,application/pdf,*/*;q=0.8")

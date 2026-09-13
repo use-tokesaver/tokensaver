@@ -56,6 +56,27 @@ func TestDiffURL(t *testing.T) {
 	}
 }
 
+func TestResolveDir(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "a.txt")
+	os.WriteFile(file, []byte("hi"), 0o644)
+
+	for _, in := range []string{dir, "file://" + dir} {
+		if p, ok := ResolveDir(in); !ok || p == "" {
+			t.Errorf("ResolveDir(%q) = %q, %v; want a directory", in, p, ok)
+		}
+	}
+	if _, ok := ResolveDir(file); ok {
+		t.Errorf("ResolveDir(%q) should be false for a plain file", file)
+	}
+	if _, ok := ResolveDir("https://example.com"); ok {
+		t.Error("ResolveDir should be false for a URL")
+	}
+	if _, ok := ResolveDir(filepath.Join(dir, "missing")); ok {
+		t.Error("ResolveDir should be false for a path that doesn't exist")
+	}
+}
+
 func TestUTF8ConvertsLegacyCharsets(t *testing.T) {
 	s := &Source{ContentType: "text/html", Charset: "windows-1252", Data: []byte("caf\xe9 \x93quoted\x94")}
 	if got := s.UTF8(); got != "café “quoted”" {

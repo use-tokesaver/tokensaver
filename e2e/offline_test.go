@@ -330,7 +330,7 @@ func TestLocalFilesAndErrors(t *testing.T) {
 	contains(t, s.ok("read", map[string]any{"source": site.URL + "/cafe"}), "# Café menu", "Crème brûlée and café au lait")
 
 	s.fails("read", map[string]any{"source": filepath.Join(s.dir, "missing.pdf")}, "no such file")
-	s.fails("read", map[string]any{"source": s.dir}, "is a directory")
+	contains(t, s.ok("read", map[string]any{"source": s.dir}), "notes.md", "rows.json")
 	s.fails("read", map[string]any{"source": s.file("blob.bin", []byte{0, 1, 2, 3, 0xff, 0xfe, 0, 0, 9, 8, 7})}, "unsupported file type")
 	s.fails("read", map[string]any{"source": site.URL + "/gone"}, "HTTP 410")
 	s.fails("read", map[string]any{"source": site.URL + "/gone"}, "This page was removed in 2024.")

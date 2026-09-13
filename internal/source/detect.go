@@ -21,6 +21,7 @@ const (
 	PPTX    Kind = "pptx"
 	JSON    Kind = "json"
 	Diff    Kind = "diff"
+	Dir     Kind = "dir"
 	Text    Kind = "text"
 	Unknown Kind = ""
 )
