@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/MilanBehnam/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
 
 // Doc is a converted document.

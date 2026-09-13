@@ -15,8 +15,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/MilanBehnam/tokensaver/internal/browser"
-	"github.com/MilanBehnam/tokensaver/internal/testdoc"
+	"github.com/use-tokesaver/tokensaver/internal/browser"
+	"github.com/use-tokesaver/tokensaver/internal/testdoc"
 )
 
 func TestToolsAreCheap(t *testing.T) {

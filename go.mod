@@ -1,4 +1,4 @@
-module github.com/MilanBehnam/tokensaver
+module github.com/use-tokesaver/tokensaver
 
 go 1.26.0
 

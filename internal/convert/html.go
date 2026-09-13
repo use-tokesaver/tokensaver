@@ -20,8 +20,8 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 
-	"github.com/MilanBehnam/tokensaver/internal/browser"
-	"github.com/MilanBehnam/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/browser"
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
 
 var mdConverter = converter.NewConverter(converter.WithPlugins(

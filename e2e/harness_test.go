@@ -22,7 +22,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/MilanBehnam/tokensaver/internal/view"
+	"github.com/use-tokesaver/tokensaver/internal/view"
 )
 
 var binPath string
@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	}
 	binPath = filepath.Join(dir, "tokensaver")
 	if !testing.Short() {
-		out, err := exec.Command("go", "build", "-o", binPath, "github.com/MilanBehnam/tokensaver/cmd/tokensaver").CombinedOutput()
+		out, err := exec.Command("go", "build", "-o", binPath, "github.com/use-tokesaver/tokensaver/cmd/tokensaver").CombinedOutput()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "build tokensaver: %v\n%s", err, out)
 			os.Exit(1)

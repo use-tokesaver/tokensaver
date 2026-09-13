@@ -13,10 +13,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/MilanBehnam/tokensaver/internal/convert"
-	"github.com/MilanBehnam/tokensaver/internal/jsonshrink"
-	"github.com/MilanBehnam/tokensaver/internal/source"
-	"github.com/MilanBehnam/tokensaver/internal/view"
+	"github.com/use-tokesaver/tokensaver/internal/convert"
+	"github.com/use-tokesaver/tokensaver/internal/jsonshrink"
+	"github.com/use-tokesaver/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/view"
 )
 
 // Tool descriptions and schemas are sent to the model on every turn, so they are

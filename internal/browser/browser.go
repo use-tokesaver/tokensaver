@@ -15,7 +15,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 
-	"github.com/MilanBehnam/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
 
 // Timeout bounds one render, including browser start-up.

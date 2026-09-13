@@ -49,8 +49,19 @@ needs.
 
 ## Install
 
+**Homebrew (macOS/Linux)**
+
 ```bash
-go install github.com/MilanBehnam/tokensaver/cmd/tokensaver@latest
+brew install use-tokesaver/tokensaver/tokensaver
+```
+
+One command — it taps `use-tokesaver/homebrew-tokensaver` and installs a prebuilt
+binary in the same step. No Go toolchain needed.
+
+**From source**
+
+```bash
+go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest
 ```
 
 (Go 1.26+. The binary lands in `$(go env GOPATH)/bin` — make sure that is on your
@@ -247,6 +258,20 @@ internal/testdoc   documents generated in code for tests and benchmarks
 `.claude/agents/` holds Claude Code subagents that each own one module (web, PDF,
 Office, JSON, MCP server) and know its tests and pitfalls — ask Claude Code to use
 the matching agent when something in that area breaks.
+
+### Releasing
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml),
+which uses [GoReleaser](https://goreleaser.com) ([.goreleaser.yaml](.goreleaser.yaml))
+to cross-compile `cmd/tokensaver` for macOS and Linux (amd64 + arm64), publish a
+GitHub Release with archives and checksums, and push an updated formula to
+[use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver).
+To dry-run the build locally without publishing: `goreleaser release --snapshot --clean --skip=publish`.
 
 ## Roadmap
 

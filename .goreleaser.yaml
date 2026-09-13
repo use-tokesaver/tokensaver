@@ -1,0 +1,59 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tokensaver
+    main: ./cmd/tokensaver
+    binary: tokensaver
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: tokensaver
+    ids: [tokensaver]
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^test:"
+      - "^chore:"
+
+homebrew_casks:
+  - name: tokensaver
+    ids: [tokensaver]
+    binaries:
+      - tokensaver
+    repository:
+      owner: use-tokesaver
+      name: homebrew-tokensaver
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: tokensaver release bot
+      email: mehranbehnam77@gmail.com
+    homepage: https://github.com/use-tokesaver/tokensaver
+    description: Local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tokensaver"]
+          end
