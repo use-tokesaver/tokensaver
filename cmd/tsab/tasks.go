@@ -25,9 +25,16 @@ type task struct {
 	expectFrom func() ([][]string, error)
 }
 
-// Tools that local-file tasks may run to read documents without tokensaver.
-var docShell = []string{"Read", "Bash(textutil:*)", "Bash(unzip:*)", "Bash(pdftotext:*)", "Bash(python3:*)",
-	"Bash(sed:*)", "Bash(grep:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(cat:*)", "Bash(wc:*)", "Bash(tr:*)", "Bash(file:*)", "Bash(ls:*)"}
+// Local-file tasks give the built-in arm a real shell, as a developer would by
+// approving textutil, unzip or a python snippet. Per-command rules are not
+// enough: they refuse the compound and multi-line commands Claude actually
+// writes ("cd /tmp && textutil …"), which would handicap the baseline. The
+// files are generated locally, so no third-party text reaches the shell.
+var docShell = []string{"Read", "Bash"}
+
+// The API task may fetch with curl as well as WebFetch, which is what a
+// developer working against an API would allow.
+var apiTools = []string{"WebFetch(domain:api.github.com)", "Bash(curl:*)", "Bash(jq:*)", "Bash(python3:*)"}
 
 const searchURL = "https://api.github.com/search/repositories?q=language:go&sort=stars&order=desc&per_page=30"
 
@@ -46,9 +53,9 @@ var tasks = []task{
 	},
 	{
 		name: "mdn-code", kind: "web",
-		prompt: "From https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch, show the example code that sends a POST request with a JSON body, exactly as the page shows it.",
+		prompt: "From https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch, show the example code that sends a POST request with a JSON body and sets the Content-Type header, exactly as the page shows it.",
 		allow:  []string{"WebFetch(domain:developer.mozilla.org)"},
-		expect: [][]string{{`method: "POST"`}, {"JSON.stringify"}, {"Content-Type"}},
+		expect: [][]string{{`method: "POST"`}, {"JSON.stringify"}, {"application/json"}},
 	},
 	{
 		name: "godoc-signature", kind: "web",
@@ -65,7 +72,7 @@ var tasks = []task{
 	{
 		name: "api-top-repos", kind: "api",
 		prompt: "Using the GitHub API endpoint " + searchURL + " list the 5 most-starred Go repositories (owner/name) with their star counts.",
-		allow:  []string{"WebFetch(domain:api.github.com)"},
+		allow:  apiTools,
 		expectFrom: func() ([][]string, error) {
 			raw, err := fetch(searchURL)
 			if err != nil {

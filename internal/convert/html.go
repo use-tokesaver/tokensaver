@@ -226,7 +226,9 @@ var wrapperLangRe = regexp.MustCompile(`(?:^|\s)language-([\w+#-]+)`)
 //     "func Unmarshal(data []byte, v any) error" otherwise looks like a
 //     navigation block to readability, which drops it;
 //   - the block's language, in whatever convention the site uses, is set as
-//     language-x so the fence carries it (```js).
+//     language-x so the fence carries it (```js);
+//   - a label next to the block that only repeats that language (MDN puts a
+//     "js" header above every example) is dropped: the fence already says it.
 func prepareCodeBlocks(root *html.Node) {
 	var pres []*html.Node
 	walk(root, func(n *html.Node) {
@@ -244,10 +246,65 @@ func prepareCodeBlocks(root *html.Node) {
 		for _, a := range links {
 			unwrap(a)
 		}
-		if lang := codeLanguage(pre); lang != "" {
+		lang := codeLanguage(pre)
+		if lang != "" {
 			setAttr(pre, "class", strings.TrimSpace(attr(pre, "class")+" language-"+strings.ToLower(lang)))
+		} else {
+			lang = classLang(pre) // already language-x / lang-x
+		}
+		dropLanguageLabel(pre, lang)
+	}
+}
+
+// dropLanguageLabel removes an element just before the code block whose whole
+// text is the block's language.
+func dropLanguageLabel(pre *html.Node, lang string) {
+	if lang == "" {
+		return
+	}
+	for _, n := range []*html.Node{prevElement(pre), prevElement(pre.Parent)} {
+		if n == nil || n.DataAtom == atom.Pre {
+			continue
+		}
+		if label := strings.TrimSpace(textOf(n)); len(label) <= 20 && strings.EqualFold(label, lang) {
+			n.Parent.RemoveChild(n)
+			return
 		}
 	}
+}
+
+// prevElement is the element before n among its siblings, ignoring whitespace.
+func prevElement(n *html.Node) *html.Node {
+	if n == nil {
+		return nil
+	}
+	for p := n.PrevSibling; p != nil; p = p.PrevSibling {
+		switch {
+		case p.Type == html.ElementNode:
+			return p
+		case p.Type == html.TextNode && strings.TrimSpace(p.Data) != "":
+			return nil
+		}
+	}
+	return nil
+}
+
+// classLang reads the language from a language-x / lang-x class.
+func classLang(pre *html.Node) string {
+	for _, n := range []*html.Node{pre, findFirst(pre, atom.Code)} {
+		if n == nil {
+			continue
+		}
+		for _, part := range strings.Fields(attr(n, "class")) {
+			if v, ok := strings.CutPrefix(part, "language-"); ok {
+				return v
+			}
+			if v, ok := strings.CutPrefix(part, "lang-"); ok {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 // codeLanguage returns the language of a <pre> block when it is given in a

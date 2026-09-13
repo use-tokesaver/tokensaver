@@ -84,7 +84,9 @@ func TestHTMLCodeBlocks(t *testing.T) {
 <h4 id="Unmarshal">func <a href="https://cs.example/decode.go">Unmarshal</a></h4>
 <div class="Documentation-declaration"><pre>func Unmarshal(data []<a href="/builtin#byte">byte</a>, v <a href="/builtin#any">any</a>) <a href="/builtin#error">error</a></pre></div>
 <p>` + prose + `</p>
-<pre class="brush: js notranslate"><code>const r = await fetch(url);</code></pre>
+<div class="code-example"><div class="example-header"><span class="language-name">js</span></div><pre class="brush: js notranslate"><code>const r = await fetch(url);</code></pre></div>
+<p class="label">go</p><pre><code class="language-go">x := 1</code></pre>
+<p>bash</p><pre><code class="language-python">not_the_label = True</code></pre>
 <div class="highlight highlight-source-go notranslate"><pre>fmt.Println("hi")</pre></div>
 <pre><code class="language-go" data-lang="go">var x = 1</code></pre>
 <pre><code data-lang="Python">print(1)</code></pre>
@@ -102,7 +104,15 @@ func TestHTMLCodeBlocks(t *testing.T) {
 		"```go\nvar x = 1\n```",
 		"```python\nprint(1)\n```",
 		"```ruby\nputs 1\n```",
+		"```go\nx := 1\n```",
+		"bash\n\n```python\nnot_the_label = True\n```", // only a label that repeats the language goes
 	)
+	// The "js" header MDN puts above every example is gone, and so is the "go"
+	// label, but the fences still carry the language.
+	if n := strings.Count(doc.Markdown, "\njs\n"); n != 0 {
+		t.Errorf("%d language labels left:\n%s", n, doc.Markdown)
+	}
+	mustNotContain(t, doc.Markdown, "\ngo\n\n```go")
 }
 
 func TestUnescapeIntraword(t *testing.T) {
