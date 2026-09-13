@@ -20,6 +20,7 @@ const (
 	XLSX    Kind = "xlsx"
 	PPTX    Kind = "pptx"
 	JSON    Kind = "json"
+	Diff    Kind = "diff"
 	Text    Kind = "text"
 	Unknown Kind = ""
 )
@@ -29,6 +30,7 @@ var extKinds = map[string]Kind{
 	".pdf":  PDF,
 	".docx": DOCX, ".xlsx": XLSX, ".xlsm": XLSX, ".pptx": PPTX,
 	".json": JSON, ".jsonl": JSON, ".ndjson": JSON, ".geojson": JSON,
+	".diff": Diff, ".patch": Diff,
 }
 
 // Detect decides what s is. Magic bytes win over headers (servers often say
@@ -60,6 +62,9 @@ func Detect(s *Source) Kind {
 		return HTML
 	case (bytes.HasPrefix(head, []byte("{")) || bytes.HasPrefix(head, []byte("["))) && json.Valid(bytes.TrimSpace(d)):
 		return JSON
+	case bytes.HasPrefix(head, []byte("diff --git ")) ||
+		(bytes.Contains(head, []byte("--- a/")) && bytes.Contains(head, []byte("+++ b/"))):
+		return Diff
 	}
 	if looksText(d) {
 		return Text

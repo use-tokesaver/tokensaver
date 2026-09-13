@@ -61,7 +61,7 @@ func New(version string, logger *slog.Logger) *mcp.Server {
 	readOnly := &mcp.ToolAnnotations{ReadOnlyHint: true}
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "read",
-		Description: "Read a web page or local file (PDF, DOCX, XLSX, PPTX, HTML, JSON, text) as clean Markdown, with navigation, ads, scripts and styling stripped: far fewer tokens than raw content. Long output is paged; for big documents use outline=true, then section=<id>.",
+		Description: "Read a web page or local file (PDF, DOCX, XLSX, PPTX, HTML, JSON, diff/patch, text), including a GitHub PR or commit URL, as clean Markdown: far fewer tokens than raw content. Long output is paged; for big documents use outline=true, then section=<id>.",
 		Annotations: readOnly,
 	}, h.read)
 	mcp.AddTool(s, &mcp.Tool{

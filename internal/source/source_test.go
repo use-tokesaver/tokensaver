@@ -27,10 +27,31 @@ func TestDetect(t *testing.T) {
 		{"csv is text", Source{Path: "a.csv", Data: []byte("a,b\n1,2\n")}, Text},
 		{"binary is unknown", Source{Path: "a.bin", Data: []byte{0x00, 0x01, 0x02, 0xff}}, Unknown},
 		{"zip that is not office", Source{Path: "a.zip", Data: []byte("PK\x03\x04junk")}, Unknown},
+		{"diff by extension", Source{Path: "x.diff", Data: []byte("not actually diff-shaped")}, Diff},
+		{"patch by extension", Source{Path: "x.patch", Data: []byte("not actually diff-shaped")}, Diff},
+		{"git diff sniffed", Source{Path: "pr", Data: []byte("diff --git a/x.go b/x.go\nindex 1..2 100644\n")}, Diff},
+		{"plain patch sniffed", Source{Path: "pr", Data: []byte("--- a/x.go\n+++ b/x.go\n@@ -1 +1 @@\n-a\n+b\n")}, Diff},
 	}
 	for _, c := range cases {
 		if got := Detect(&c.src); got != c.want {
 			t.Errorf("%s: Detect = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestDiffURL(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"https://github.com/acme/widget/pull/42", "https://github.com/acme/widget/pull/42.diff"},
+		{"https://github.com/acme/widget/pull/42/", "https://github.com/acme/widget/pull/42.diff"},
+		{"https://github.com/acme/widget/commit/deadbeef1234", "https://github.com/acme/widget/commit/deadbeef1234.diff"},
+		{"https://github.com/acme/widget/pull/42.diff", "https://github.com/acme/widget/pull/42.diff"},               // already a .diff URL: unchanged
+		{"https://github.com/acme/widget/pull/42/files", "https://github.com/acme/widget/pull/42/files"},             // not the PR itself: unchanged
+		{"https://gitlab.com/acme/widget/-/merge_requests/42", "https://gitlab.com/acme/widget/-/merge_requests/42"}, // GitHub only
+		{"https://example.com/notes.md", "https://example.com/notes.md"},
+	}
+	for _, c := range cases {
+		if got := diffURL(c.in); got != c.want {
+			t.Errorf("diffURL(%q) = %q, want %q", c.in, got, c.want)
 		}
 	}
 }

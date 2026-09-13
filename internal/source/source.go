@@ -57,16 +57,26 @@ func (e *StatusError) Error() string {
 var client = &http.Client{Timeout: 30 * time.Second}
 
 var (
-	bareHostRe  = regexp.MustCompile(`^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(:\d+)?(/|$)`)
-	localhostRe = regexp.MustCompile(`^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(/|$)`)
+	bareHostRe   = regexp.MustCompile(`^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(:\d+)?(/|$)`)
+	localhostRe  = regexp.MustCompile(`^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(/|$)`)
+	githubDiffRe = regexp.MustCompile(`^https://github\.com/[\w.-]+/[\w.-]+/(?:pull/\d+|commit/[0-9a-fA-F]{7,40})$`)
 )
+
+// diffURL appends ".diff" to a GitHub pull request or commit URL, so an agent can
+// pass one straight in instead of knowing about GitHub's .diff endpoint.
+func diffURL(input string) string {
+	if githubDiffRe.MatchString(strings.TrimSuffix(input, "/")) {
+		return strings.TrimSuffix(input, "/") + ".diff"
+	}
+	return input
+}
 
 // Load fetches a URL (GET) or reads a local file. accept is sent as the HTTP
 // Accept header. A missing scheme is tolerated: "localhost:3000/api" means
 // http://, and something that looks like a host ("example.com/docs") means
 // https:// when no such local file exists.
 func Load(ctx context.Context, input, accept string) (*Source, error) {
-	input = strings.TrimSpace(input)
+	input = diffURL(strings.TrimSpace(input))
 	if input == "" {
 		return nil, errors.New("source is empty")
 	}

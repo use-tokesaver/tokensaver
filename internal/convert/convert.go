@@ -36,10 +36,12 @@ func Convert(ctx context.Context, src *source.Source, kind source.Kind, opts Opt
 		return convertXLSX(src.Data)
 	case source.PPTX:
 		return convertPPTX(src.Data)
+	case source.Diff:
+		return convertDiff(src.Data)
 	case source.Text, source.JSON:
 		return &Doc{Markdown: cleanText(src.UTF8())}, nil
 	}
-	return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, text)")
+	return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, diff/patch, text)")
 }
 
 var (

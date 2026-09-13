@@ -108,8 +108,8 @@ on purpose.
 | `max_chars` | Page size, default 20,000 characters (~5k tokens) |
 | `js` | Render in headless Chrome first; happens automatically when a page looks empty |
 
-Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, and any text file
-(Markdown, CSV, code, logs…).
+Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, diff/patch (including
+GitHub PR and commit URLs), and any text file (Markdown, CSV, code, logs…).
 
 What it does per format:
 
@@ -126,6 +126,10 @@ What it does per format:
   columns dropped; hidden sheets marked.
 - **PPTX** — `## Slide N: Title`, bullets with nesting, tables, speaker notes;
   slide numbers/footers skipped.
+- **Diffs/PRs** — a GitHub PR or commit URL (`.../pull/42`, `.../commit/<sha>`) is
+  fetched as its underlying diff automatically; local `.diff`/`.patch` files work
+  the same way. One `## path (+N -M)` heading per changed file; hunks that only
+  change whitespace are dropped with a note instead of shown.
 
 Paged output ends with a hint such as `[page 1 of 4 · next: page=2 · outline=true
 lists sections]`. When a table or code block is split across pages, the table
