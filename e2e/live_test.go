@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MilanBehnam/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
 
 // Live checks run against real websites, a real API and a real PDF. They need

@@ -30,8 +30,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MilanBehnam/tokensaver/internal/source"
-	"github.com/MilanBehnam/tokensaver/internal/testdoc"
+	"github.com/use-tokesaver/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/testdoc"
 )
 
 const (
@@ -82,7 +82,7 @@ func main() {
 
 	logf("building tokensaver")
 	bin := filepath.Join(dir, "tokensaver")
-	if b, err := exec.Command("go", "build", "-o", bin, "github.com/MilanBehnam/tokensaver/cmd/tokensaver").CombinedOutput(); err != nil {
+	if b, err := exec.Command("go", "build", "-o", bin, "github.com/use-tokesaver/tokensaver/cmd/tokensaver").CombinedOutput(); err != nil {
 		fail("build tokensaver: %v\n%s", err, b)
 	}
 	r := &runner{claude: *claudeBin, model: *model, workDir: workDir, budget: *budget, timeout: *timeout,

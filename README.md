@@ -50,7 +50,7 @@ needs.
 ## Install
 
 ```bash
-go install github.com/MilanBehnam/tokensaver/cmd/tokensaver@latest
+go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest
 ```
 
 (Go 1.26+. The binary lands in `$(go env GOPATH)/bin` — make sure that is on your
