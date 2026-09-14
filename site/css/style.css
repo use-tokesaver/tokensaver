@@ -1,0 +1,156 @@
+/* tokensaver Site — shared styles. Design system: wayfinder ticket 02, Variant A ("Anthropic-literal")
+   structure — Inter + Source Serif 4, generous spacing, soft rounding — with a custom
+   cream/indigo palette (not Anthropic's literal ivory/terracotta) and a real light/dark
+   toggle (kept from the map's "must support dark mode" requirement; Variant A's own
+   band-flip-only approach was dropped in favor of that standing requirement). */
+
+:root {
+  --bg: #f6f3ec;
+  --text: #1e1b16;
+  --card: #ffffff;
+  --border: rgba(30, 27, 22, .12);
+  --accent: #c15f3c;
+  --muted: #6f6a5f;
+
+  --r-chip: 4px;
+  --r-btn: 8px;
+  --r-card: 16px;
+  --r-band: 24px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 16px;
+  --sp-4: 24px;
+  --sp-5: 32px;
+  --sp-6: 48px;
+  --sp-7: 64px;
+  --sp-8: 96px;
+}
+
+html[data-theme="dark"] {
+  --bg: #1e1b16;
+  --text: #f6f3ec;
+  --card: #2e2a23;
+  --border: rgba(246, 243, 236, .12);
+  --accent: #dc8a63;
+  --muted: #a39d90;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Source Serif 4", Georgia, serif;
+  line-height: 1.55;
+  transition: background .15s, color .15s;
+}
+
+a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); }
+a:hover { color: var(--accent); border-color: var(--accent); }
+
+h1, h2, h3, .wordmark { font-family: "Inter", Arial, sans-serif; }
+h1, h2, h3 { font-weight: 700; line-height: 1.15; margin: 0 0 var(--sp-3); }
+h1 { font-size: 2.6rem; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0 0 var(--sp-4); max-width: 70ch; }
+
+code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+pre {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-btn);
+  padding: var(--sp-4);
+  overflow-x: auto;
+  font-size: 0.88rem;
+}
+code:not(pre code) {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-chip);
+  padding: 1px 6px;
+  font-size: 0.9em;
+}
+table { border-collapse: collapse; width: 100%; margin: 0 0 var(--sp-4); font-family: "Inter", sans-serif; }
+th, td { border: 1px solid var(--border); padding: var(--sp-2) var(--sp-3); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+
+/* ============ topbar ============ */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-3) 6vw;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg); z-index: 10;
+}
+.wordmark { font-weight: 700; font-size: 1.15rem; border: none; display: flex; align-items: center; gap: var(--sp-2); }
+.wordmark .mark {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: var(--r-btn);
+  background: var(--accent); position: relative;
+}
+.wordmark .mark::after {
+  content: ""; position: absolute; inset: 7px 7px 10px; border-left: 2px solid var(--bg);
+  border-bottom: 2px solid var(--bg); transform: rotate(-45deg);
+}
+.topbar nav { display: flex; align-items: center; gap: var(--sp-4); }
+.topbar nav a { border: none; color: var(--muted); font-family: "Inter", sans-serif; font-size: 0.92rem; }
+.topbar nav a:hover { color: var(--accent); }
+
+.theme-toggle {
+  background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-chip);
+  font-family: "Inter", sans-serif; font-size: 0.85rem; padding: var(--sp-1) var(--sp-3);
+  cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ============ hero ============ */
+.hero { padding: var(--sp-8) 6vw var(--sp-7); max-width: 900px; }
+.hero h1 { margin-bottom: var(--sp-3); font-family: "Inter", sans-serif; }
+.hero p.lede { font-size: 1.2rem; color: var(--muted); max-width: 55ch; }
+.cta-row { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-top: var(--sp-5); }
+.btn {
+  display: inline-block; border: 1px solid var(--border); border-radius: var(--r-btn);
+  padding: var(--sp-3) var(--sp-5);
+  font-family: "Inter", sans-serif; font-weight: 600; cursor: pointer; background: var(--bg);
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.btn-primary:hover { opacity: .88; color: var(--bg); }
+
+/* ============ sections ============ */
+.section { padding: var(--sp-7) 6vw; border-top: 1px solid var(--border); }
+.section-label { color: var(--muted); font-family: "Inter", sans-serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: var(--sp-5); font-weight: 600; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-5); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--sp-5); }
+.card h3 { color: var(--accent); font-family: "Inter", sans-serif; }
+.card p { margin: 0; color: var(--muted); }
+
+/* ============ footer ============ */
+footer {
+  padding: var(--sp-5) 6vw; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3);
+  color: var(--muted); font-family: "Inter", sans-serif; font-size: 0.85rem;
+}
+footer a { color: var(--muted); }
+
+/* ============ docs layout ============ */
+.docs-layout { display: flex; }
+.docs-sidebar {
+  width: 220px; flex-shrink: 0; border-right: 1px solid var(--border);
+  padding: var(--sp-5) var(--sp-4); position: sticky; top: 57px;
+  align-self: flex-start; height: calc(100vh - 57px); overflow-y: auto;
+}
+.docs-sidebar .section-label { margin-bottom: var(--sp-3); }
+.docs-sidebar ul { list-style: none; margin: 0; padding: 0; }
+.docs-sidebar li { margin-bottom: var(--sp-2); }
+.docs-sidebar a { border: none; color: var(--muted); font-family: "Inter", sans-serif; font-size: 0.92rem; display: block; padding: var(--sp-1) 0; }
+.docs-sidebar a:hover, .docs-sidebar a.active { color: var(--accent); }
+.docs-content { padding: var(--sp-7) 6vw; max-width: 760px; }
+
+@media (max-width: 760px) {
+  .docs-layout { flex-direction: column; }
+  .docs-sidebar { width: auto; position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  .topbar nav { gap: var(--sp-3); }
+  .hero, .section, .docs-content { padding-left: 5vw; padding-right: 5vw; }
+}

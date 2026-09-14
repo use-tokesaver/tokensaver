@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install — tokensaver Docs</title>
+<meta name="description" content="Install tokensaver with Homebrew or from source, plus the optional Chrome dependency for JavaScript-only pages.">
+<meta property="og:title" content="Install — tokensaver Docs">
+<meta property="og:description" content="Install tokensaver with Homebrew or from source.">
+<meta property="og:image" content="../assets/og-image.svg">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <div class="section-label">Docs</div>
+    <ul>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="install.html" class="active">Install</a></li>
+      <li><a href="connect.html">Connect it to your agent</a></li>
+      <li><a href="read.html">read</a></li>
+      <li><a href="read-json.html">read_json</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+      <li><a href="security.html">Security notes</a></li>
+    </ul>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Install</h1>
+
+    <h2>Homebrew (macOS/Linux)</h2>
+    <pre>brew install use-tokesaver/tokensaver/tokensaver</pre>
+    <p>One command — it taps <code>use-tokesaver/homebrew-tokensaver</code> and installs a prebuilt binary in the same step. No Go toolchain needed.</p>
+
+    <h2>From source</h2>
+    <pre>go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest</pre>
+    <p>Go 1.26+. The binary lands in <code>$(go env GOPATH)/bin</code> — make sure that is on your <code>PATH</code>. Or build from a clone: <code>go build -o tokensaver ./cmd/tokensaver</code>.</p>
+
+    <h2>Optional: Chrome</h2>
+    <p>Chrome, Chromium, Brave or Edge installed in the usual place (or <code>TOKENSAVER_CHROME=/path/to/chrome</code>) lets tokensaver render JavaScript-only pages.</p>
+
+    <p>Next: <a href="connect.html">Connect it to your agent</a>.</p>
+  </main>
+</div>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>v0.1.0</span>
+</footer>
+
+<script src="../js/theme.js"></script>
+</body>
+</html>
