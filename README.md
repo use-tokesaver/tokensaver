@@ -50,16 +50,17 @@ needs.
 ## Install
 
 ```bash
-go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest
+brew tap use-tokesaver/tokensaver
+brew install tokensaver
 ```
 
-(Go 1.26+. The binary lands in `$(go env GOPATH)/bin` — make sure that is on your
-`PATH`.) Or build from a clone: `go build -o tokensaver ./cmd/tokensaver`.
+macOS and Linux, Intel and ARM — a prebuilt binary, no Go toolchain needed.
+Homebrew 7 refuses to load non-official taps until you trust them, so if it
+complains, run `brew trust use-tokesaver/tokensaver` and install again.
 
-**Homebrew isn't available yet.** The tap
-([use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver))
-is filled in by the release pipeline, so `brew install use-tokesaver/tokensaver/tokensaver`
-starts working with the first tagged release — not before.
+On Windows, or not using Homebrew? Download an archive from
+[Releases](https://github.com/use-tokesaver/tokensaver/releases) and put the
+binary on your `PATH`.
 
 Optional: Chrome, Chromium, Brave or Edge installed in the usual place (or
 `TOKENSAVER_CHROME=/path/to/chrome`) lets tokensaver render JavaScript-only pages.
