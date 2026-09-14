@@ -13,6 +13,7 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
@@ -23,6 +24,9 @@ archives:
   - id: tokensaver
     ids: [tokensaver]
     formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     files:
       - LICENSE
       - README.md
@@ -37,11 +41,13 @@ changelog:
       - "^test:"
       - "^chore:"
 
-homebrew_casks:
+# A formula, not a cask: Homebrew casks are macOS-only, and this has to install
+# on Linux too. GoReleaser deprecated `brews` in favour of `homebrew_casks`, so
+# `goreleaser check` reports a deprecation here — accepted deliberately, since a
+# cask cannot serve Linux users at all.
+brews:
   - name: tokensaver
     ids: [tokensaver]
-    binaries:
-      - tokensaver
     repository:
       owner: use-tokesaver
       name: homebrew-tokensaver
@@ -51,9 +57,8 @@ homebrew_casks:
       email: mehranbehnam77@gmail.com
     homepage: https://github.com/use-tokesaver/tokensaver
     description: Local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tokensaver"]
-          end
+    license: MIT
+    install: |
+      bin.install "tokensaver"
+    test: |
+      assert_match version.to_s, shell_output("#{bin}/tokensaver -version")

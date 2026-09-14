@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Install — tokensaver Docs</title>
-<meta name="description" content="Install tokensaver with Go, plus the optional Chrome dependency for JavaScript-only pages.">
+<meta name="description" content="Install tokensaver with Homebrew on macOS and Linux, plus the optional Chrome dependency for JavaScript-only pages.">
 <meta property="og:title" content="Install — tokensaver Docs">
-<meta property="og:description" content="Install tokensaver with Go.">
+<meta property="og:description" content="Install tokensaver with Homebrew on macOS and Linux.">
 <meta property="og:image" content="../assets/og-image.svg">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,12 +43,13 @@
   <main class="docs-content">
     <h1>Install</h1>
 
-    <h2>With Go</h2>
-    <pre>go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest</pre>
-    <p>Go 1.26+. The binary lands in <code>$(go env GOPATH)/bin</code> — make sure that is on your <code>PATH</code>. Or build from a clone: <code>go build -o tokensaver ./cmd/tokensaver</code>.</p>
+    <h2>Homebrew (macOS &amp; Linux)</h2>
+    <pre>brew tap use-tokesaver/tokensaver
+brew install tokensaver</pre>
+    <p>A prebuilt binary for macOS and Linux, Intel and ARM — no Go toolchain needed. Homebrew 7 refuses to load non-official taps until you trust them, so if it complains, run <code>brew trust use-tokesaver/tokensaver</code> and install again.</p>
 
-    <h2>Homebrew</h2>
-    <p>Not available yet. The tap <code>use-tokesaver/homebrew-tokensaver</code> is filled in by the release pipeline, so <code>brew install use-tokesaver/tokensaver/tokensaver</code> starts working with the first tagged release — not before.</p>
+    <h2>Windows, or without Homebrew</h2>
+    <p>Download an archive from <a href="https://github.com/use-tokesaver/tokensaver/releases">Releases</a> (<code>.zip</code> on Windows, <code>.tar.gz</code> elsewhere) and put the <code>tokensaver</code> binary on your <code>PATH</code>.</p>
 
     <h2>Optional: Chrome</h2>
     <p>Chrome, Chromium, Brave or Edge installed in the usual place (or <code>TOKENSAVER_CHROME=/path/to/chrome</code>) lets tokensaver render JavaScript-only pages.</p>
@@ -60,7 +61,7 @@
 <footer>
   <span>tokensaver — MIT license</span>
   <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
-  <span>unreleased</span>
+  <span>v0.1.0</span>
 </footer>
 
 <script src="../js/theme.js"></script>

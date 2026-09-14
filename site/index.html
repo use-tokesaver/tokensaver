@@ -56,12 +56,13 @@
 
 <section class="section" id="install">
   <div class="section-label">Install</div>
-  <h2>With Go</h2>
-  <pre>go install github.com/use-tokesaver/tokensaver/cmd/tokensaver@latest</pre>
-  <p>Homebrew arrives with the first tagged release.</p>
+  <h2>Homebrew (macOS &amp; Linux)</h2>
+  <pre>brew tap use-tokesaver/tokensaver
+brew install tokensaver</pre>
+  <p>On Windows, or not using Homebrew? Grab an archive from <a href="https://github.com/use-tokesaver/tokensaver/releases">Releases</a>.</p>
   <h2>Connect it to Claude Code</h2>
   <pre>claude mcp add --scope user tokensaver -- tokensaver</pre>
-  <p>Building from source, or connecting Cursor, Claude Desktop, or another MCP client? See <a href="docs/install.html">Docs → Install</a> and <a href="docs/connect.html">Docs → Connect it to your agent</a>. Once it is running, <a href="docs/usage.html">Docs → Usage</a> shows what to ask for.</p>
+  <p>Installing another way, or connecting Cursor, Claude Desktop, or another MCP client? See <a href="docs/install.html">Docs → Install</a> and <a href="docs/connect.html">Docs → Connect it to your agent</a>. Once it is running, <a href="docs/usage.html">Docs → Usage</a> shows what to ask for.</p>
 </section>
 
 <section class="section">
@@ -71,7 +72,7 @@
   <div class="cards">
     <div class="card">
       <h3><a href="docs/install.html">Install</a></h3>
-      <p>Installing with Go, plus the optional Chrome dependency.</p>
+      <p>Homebrew, release archives, plus the optional Chrome dependency.</p>
     </div>
     <div class="card">
       <h3><a href="docs/read.html">read</a></h3>
@@ -90,7 +91,7 @@
 <footer>
   <span>tokensaver — MIT license</span>
   <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
-  <span>unreleased</span>
+  <span>v0.1.0</span>
 </footer>
 
 <script src="js/theme.js"></script>
