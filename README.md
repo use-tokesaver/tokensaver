@@ -269,19 +269,27 @@ internal/testdoc   documents generated in code for tests and benchmarks
 Office, JSON, MCP server) and know its tests and pitfalls — ask Claude Code to use
 the matching agent when something in that area breaks.
 
-### Releasing
+### Contributing and releasing
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+`main` takes pull requests only. Branch, open a PR, and
+[.github/workflows/ci.yml](.github/workflows/ci.yml) (gofmt, `go vet`, `go test ./...`)
+has to pass before it can merge.
 
-Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml),
-which uses [GoReleaser](https://goreleaser.com) ([.goreleaser.yaml](.goreleaser.yaml))
-to cross-compile `cmd/tokensaver` for macOS and Linux (amd64 + arm64), publish a
-GitHub Release with archives and checksums, and push an updated formula to
+Releases are cut automatically from commit messages — no manual tagging. Subjects
+follow [Conventional Commits](https://www.conventionalcommits.org): `feat:` bumps the
+minor version, `fix:` the patch, `feat!:` (or a `BREAKING CHANGE:` footer) the major,
+and `docs:`/`chore:`/`test:`/`refactor:`/`ci:` release nothing.
+
+When a PR merges, [.github/workflows/release.yml](.github/workflows/release.yml) asks
+[`svu`](https://github.com/caarlos0/svu) for the next version; if nothing releasable
+landed it stops there, otherwise it tags and hands over to
+[GoReleaser](https://goreleaser.com) ([.goreleaser.yaml](.goreleaser.yaml)), which
+cross-compiles `cmd/tokensaver` for macOS and Linux (amd64 + arm64), publishes a GitHub
+Release with archives and checksums, and updates
 [use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver).
-To dry-run the build locally without publishing: `goreleaser release --snapshot --clean --skip=publish`.
+
+Pushing a `v*` tag by hand still works as an escape hatch. To dry-run the build locally
+without publishing: `goreleaser release --snapshot --clean --skip=publish`.
 
 ## Roadmap
 
