@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>read — tokensaver Docs</title>
+<meta name="description" content="The read tool: web pages, PDF, DOCX, XLSX, PPTX, diffs, and directories, converted to Markdown.">
+<meta property="og:title" content="read — tokensaver Docs">
+<meta property="og:description" content="Web pages, PDF, DOCX, XLSX, PPTX, diffs, and directories, converted to Markdown.">
+<meta property="og:image" content="../assets/og-image.svg">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <div class="section-label">Docs</div>
+    <ul>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="install.html">Install</a></li>
+      <li><a href="connect.html">Connect it to your agent</a></li>
+      <li><a href="read.html" class="active">read</a></li>
+      <li><a href="read-json.html">read_json</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+      <li><a href="security.html">Security notes</a></li>
+    </ul>
+  </aside>
+
+  <main class="docs-content">
+    <h1><code>read</code> — web pages and documents → Markdown</h1>
+    <p>The tool definitions cost ~650 tokens per request in total — they are kept short on purpose.</p>
+
+    <table>
+      <tr><th>Parameter</th><th></th></tr>
+      <tr><td><code>source</code></td><td>URL, local file path, or local directory path (<code>~/</code>, <code>file://</code>, and bare <code>localhost:3000/…</code> work)</td></tr>
+      <tr><td><code>outline</code></td><td>Only list the sections: id, heading, estimated size</td></tr>
+      <tr><td><code>section</code></td><td>Only return one section — an id from the outline, or heading text</td></tr>
+      <tr><td><code>page</code></td><td>Page of the output (long output is split at paragraph boundaries)</td></tr>
+      <tr><td><code>max_chars</code></td><td>Page size, default 20,000 characters (~5k tokens)</td></tr>
+      <tr><td><code>js</code></td><td>Render in headless Chrome first; happens automatically when a page looks empty</td></tr>
+    </table>
+
+    <p>Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, diff/patch (including GitHub PR and commit URLs), local directories (as a tree), and any text file (Markdown, CSV, code, logs…).</p>
+
+    <h2>What it does per format</h2>
+    <ul>
+      <li><strong>Web pages</strong> — main-content extraction (Mozilla Readability), then Markdown. Scripts, styles, images, forms, nav/header/footer chrome, heading permalinks and <code>[12]</code> citation marks are dropped; same-site links become short root-relative paths (<code>/docs/x</code>); tracking parameters (<code>utm_*</code>) are removed; tables and code blocks (with their language) are kept.</li>
+      <li><strong>PDF</strong> — text per page under <code>## Page N</code> headings. Running headers/footers and page numbers that repeat on most pages are removed.</li>
+      <li><strong>DOCX</strong> — headings (from styles), bullet/numbered lists, bold/italic, links, tables. Deleted tracked changes are skipped.</li>
+      <li><strong>XLSX</strong> — each sheet as a Markdown table of displayed values; empty rows and columns dropped; hidden sheets marked.</li>
+      <li><strong>PPTX</strong> — <code>## Slide N: Title</code>, bullets with nesting, tables, speaker notes; slide numbers/footers skipped.</li>
+      <li><strong>Diffs/PRs</strong> — a GitHub PR or commit URL is fetched as its underlying diff automatically; local <code>.diff</code>/<code>.patch</code> files work the same way. One <code>## path (+N -M)</code> heading per changed file; whitespace-only hunks are dropped with a note.</li>
+      <li><strong>Directories</strong> — a token-aware tree: the root <code>.gitignore</code> is respected, <code>.git</code> is always skipped, dependency directories collapse to one line, and any other directory with over 100 direct entries collapses to an item count. Files show their size.</li>
+    </ul>
+
+    <p>Paged output ends with a hint such as <code>[page 1 of 4 · next: page=2 · outline=true lists sections]</code>. When a table or code block is split across pages, the table header is repeated and the code fence is closed and reopened, so every page stands on its own.</p>
+
+    <p>Next: <a href="read-json.html">read_json</a>.</p>
+  </main>
+</div>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>v0.1.0</span>
+</footer>
+
+<script src="../js/theme.js"></script>
+</body>
+</html>

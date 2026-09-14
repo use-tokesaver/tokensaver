@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs — tokensaver</title>
+<meta name="description" content="tokensaver documentation: install, connect it to your agent, the read and read_json tools, configuration, and security notes.">
+<meta property="og:title" content="Docs — tokensaver">
+<meta property="og:description" content="tokensaver documentation: install, connect, tools, configuration, security.">
+<meta property="og:image" content="../assets/og-image.svg">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <div class="section-label">Docs</div>
+    <ul>
+      <li><a href="index.html" class="active">Overview</a></li>
+      <li><a href="install.html">Install</a></li>
+      <li><a href="connect.html">Connect it to your agent</a></li>
+      <li><a href="read.html">read</a></li>
+      <li><a href="read-json.html">read_json</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+      <li><a href="security.html">Security notes</a></li>
+    </ul>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Overview</h1>
+    <p class="lede">tokensaver is a local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text — so your coding agent spends its context on content, not markup.</p>
+    <p>Ask your agent <em>"read https://go.dev/doc/effective_go with tokensaver"</em> or <em>"fetch this JSON via tokensaver and drop the large lists"</em>. tokensaver fetches or opens the thing, strips everything an LLM doesn't need (navigation, scripts, styling, ads, citation marks, running page headers, null fields…) and returns clean Markdown or shrunk JSON — paged, with an outline so the agent can read just the part it needs.</p>
+
+    <h2>Where to start</h2>
+    <ul>
+      <li><a href="install.html">Install</a> it with Homebrew or from source.</li>
+      <li><a href="connect.html">Connect it to your agent</a> — Claude Code, Cursor, Claude Desktop, or any MCP client.</li>
+      <li>Read the <a href="read.html">read</a> and <a href="read-json.html">read_json</a> tool references.</li>
+      <li>Tune it with <a href="configuration.html">Configuration</a>, and check the <a href="security.html">Security notes</a> before pointing it at untrusted content.</li>
+    </ul>
+
+    <h2>How much it saves</h2>
+    <p>Measured on real sources by the live benchmark (tokens estimated as characters / 4):</p>
+    <table>
+      <tr><th>Source</th><th>Raw tokens</th><th>tokensaver</th><th>Saved</th></tr>
+      <tr><td>Wikipedia article (Go), whole article</td><td>183,202</td><td>19,383</td><td>89%</td></tr>
+      <tr><td>…its outline</td><td></td><td>248</td><td>99.9%</td></tr>
+      <tr><td>GitHub repo page</td><td>87,100</td><td>1,433</td><td>98%</td></tr>
+      <tr><td>MDN guide (Using Fetch), whole page</td><td>45,954</td><td>6,270</td><td>86%</td></tr>
+      <tr><td>GitHub search API, 50 repos, select + table</td><td>78,745</td><td>379</td><td>99.5%</td></tr>
+    </table>
+    <p>See the full table and methodology in the <a href="https://github.com/use-tokesaver/tokensaver#how-much-it-saves">README</a>.</p>
+  </main>
+</div>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>v0.1.0</span>
+</footer>
+
+<script src="../js/theme.js"></script>
+</body>
+</html>
