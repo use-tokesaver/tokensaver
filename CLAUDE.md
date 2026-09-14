@@ -76,7 +76,24 @@ go run ./cmd/tsab [-only task,…] [-runs N] [-model sonnet]   # billed: real Cl
 
 ## Subagents
 
-`.claude/agents/` has one fixer per area: `web-reader`, `pdf-reader`,
-`office-reader`, `json-shrinker`, `mcp-server`. Use the one that owns the failing
-area. `readme` is different — it keeps README.md honest, and should be used
-proactively after any change that could make it stale.
+`.claude/agents/` pairs a writer with a reviewer per area, on deliberately
+different models — the reviewer is not the model that wrote the code.
+
+| Area | Writer (sonnet) | Reviewer (opus) |
+|---|---|---|
+| Web pages, HTML, fetching, charset | `web-reader` | `web-reader-review` |
+| PDF extraction | `pdf-reader` | `pdf-reader-review` |
+| DOCX / XLSX / PPTX | `office-reader` | `office-reader-review` |
+| JSON shrinking, `read_json` | `json-shrinker` | `json-shrinker-review` |
+| MCP tools, paging, cache, binary | `mcp-server` | `mcp-server-review` |
+
+`supervisor` (fable) routes work to the right writer, holds the line that nothing
+is done until its reviewer approves, and settles it when writer and reviewer
+disagree. Reviewers and the supervisor have no edit tools: they judge, the writer
+fixes.
+
+`readme` (sonnet) is outside this flow — it keeps README.md honest, and should be
+used proactively after any change that could make it stale.
+
+**Use the pair, not just the writer.** A writer reporting success is a claim, not
+a verdict; run the matching reviewer before calling the work finished.
