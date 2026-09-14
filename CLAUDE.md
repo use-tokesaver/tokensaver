@@ -24,6 +24,28 @@ into compact text for LLMs. See README.md for the user-facing picture.
   today) must degrade gracefully with a clear note when missing.
 - Test fixtures are generated in code (`internal/testdoc`), not committed as
   binaries.
+- **Commit messages set the release version.** Every commit subject must start with
+  a Conventional Commits type — see below. Getting this wrong either ships a version
+  nobody meant or silently ships nothing.
+- **`main` takes pull requests only.** Direct pushes are blocked; branch off, open a
+  PR, let `ci` go green, merge.
+
+## Committing and releasing
+
+Commit subjects follow [Conventional Commits](https://www.conventionalcommits.org):
+
+| Prefix | Effect on the next release |
+|---|---|
+| `feat:` | minor bump (`v0.2.1` → `v0.3.0`) |
+| `fix:` | patch bump (`v0.2.1` → `v0.2.2`) |
+| `feat!:` or a `BREAKING CHANGE:` footer | major bump |
+| `docs:` `chore:` `test:` `refactor:` `ci:` | no release |
+
+Merging a PR into `main` runs `.github/workflows/release.yml`, which asks
+[`svu`](https://github.com/caarlos0/svu) for the next version, tags it, and has
+GoReleaser publish the binaries and update the Homebrew tap. A merge with no
+`feat:`/`fix:` in it cuts no release, by design. Pushing a `v*` tag by hand still
+works as an escape hatch.
 
 ## Layout
 
@@ -56,4 +78,5 @@ go run ./cmd/tsab [-only task,…] [-runs N] [-model sonnet]   # billed: real Cl
 
 `.claude/agents/` has one fixer per area: `web-reader`, `pdf-reader`,
 `office-reader`, `json-shrinker`, `mcp-server`. Use the one that owns the failing
-area.
+area. `readme` is different — it keeps README.md honest, and should be used
+proactively after any change that could make it stale.

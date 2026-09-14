@@ -2,25 +2,56 @@ name: release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main] # a merged PR: version comes from the Conventional Commits
+    tags: ["v*"] # manual escape hatch: version comes from the tag
 
 permissions:
   contents: write
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # svu and the changelog need full history and tags
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
 
-      - uses: goreleaser/goreleaser-action@v6
+      # A tag push already carries its version. A merge to main works it out from
+      # the Conventional Commits since the last release; when nothing releasable
+      # landed (docs:, chore:, refactor: …) svu returns the current version and
+      # this job stops without cutting one.
+      #
+      # The tag is created here rather than in a separate workflow on purpose: a
+      # tag pushed with GITHUB_TOKEN deliberately does not trigger another workflow
+      # run, so a split "tag" / "release" pair would silently never release.
+      - id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          go install github.com/caarlos0/svu/v3@latest
+          svu="$(go env GOPATH)/bin/svu"
+          current=$("$svu" current)
+          next=$("$svu" next)
+          echo "current=$current next=$next"
+          if [ "$next" = "$current" ]; then
+            echo "Nothing releasable since $current — no feat:/fix: commits."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$next" -m "$next"
+          git push origin "$next"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+      - uses: goreleaser/goreleaser-action@v7
+        if: steps.version.outputs.release == 'true'
         with:
           distribution: goreleaser
           version: latest
