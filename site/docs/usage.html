@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage — tokensaver Docs</title>
+<meta name="description" content="What to do after installing tokensaver: verify it is connected, then example prompts for pages, PDFs, pull requests, repositories and APIs.">
+<meta property="og:title" content="Usage — tokensaver Docs">
+<meta property="og:description" content="What to do after installing tokensaver, with example prompts.">
+<meta property="og:image" content="../assets/og-image.svg">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="../index.html"><span class="mark"></span>tokensaver</a>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
+    <button class="theme-toggle" data-theme-toggle>toggle</button>
+  </nav>
+</header>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <div class="section-label">Docs</div>
+    <ul>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="install.html">Install</a></li>
+      <li><a href="connect.html">Connect it to your agent</a></li>
+      <li><a href="usage.html" class="active">Usage</a></li>
+      <li><a href="read.html">read</a></li>
+      <li><a href="read-json.html">read_json</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+      <li><a href="security.html">Security notes</a></li>
+    </ul>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Usage</h1>
+
+    <h2>First, check it is actually connected</h2>
+    <p>Restart your agent after connecting it, then confirm it is there. In Claude Code:</p>
+    <pre>claude mcp list</pre>
+    <p>You want to see <code>tokensaver: tokensaver - ✔ Connected</code>. If it times out instead, the <code>tokensaver</code> command on your <code>PATH</code> is probably not this server — check with <code>which tokensaver</code>.</p>
+
+    <h2>Then just ask</h2>
+    <p>You never call the tools yourself. You ask for something, and the agent reaches for tokensaver instead of fetching the raw page.</p>
+    <pre>read https://go.dev/doc/effective_go with tokensaver</pre>
+
+    <h2>Long documents: outline first</h2>
+    <p>The outline costs a few hundred tokens, and then you only pay for the part you actually want.</p>
+    <pre>outline https://arxiv.org/pdf/1706.03762 with tokensaver,
+then read just the Attention section</pre>
+
+    <h2>Pull requests</h2>
+    <p>A PR or commit URL is fetched as its diff automatically, collapsed to the changed hunks, one heading per file.</p>
+    <pre>read https://github.com/use-tokesaver/tokensaver/pull/16 with tokensaver</pre>
+
+    <h2>Getting oriented in a repository</h2>
+    <p>A gitignore-aware tree instead of an <code>ls -R</code> dump.</p>
+    <pre>read ~/code/some-project with tokensaver</pre>
+
+    <h2>APIs</h2>
+    <p>Shrunk to the fields you asked for, instead of the whole payload.</p>
+    <pre>fetch https://api.github.com/search/repositories?q=language:go&amp;sort=stars
+with tokensaver — just full_name and stargazers_count, as a table</pre>
+
+    <h2>If a page looks empty</h2>
+    <p>It is probably JavaScript-only. Ask again with <code>js=true</code> and tokensaver renders it in headless Chrome first, when <a href="install.html">Chrome is installed</a>.</p>
+
+    <p>Next: the full parameter tables for <a href="read.html">read</a> and <a href="read-json.html">read_json</a>.</p>
+  </main>
+</div>
+
+<footer>
+  <span>tokensaver — MIT license</span>
+  <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
+  <span>unreleased</span>
+</footer>
+
+<script src="../js/theme.js"></script>
+</body>
+</html>

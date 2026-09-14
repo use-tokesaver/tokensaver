@@ -86,6 +86,50 @@ claude mcp add --scope user tokensaver -- tokensaver
 If the client can't find it, use the absolute path, e.g.
 `"command": "/Users/you/go/bin/tokensaver"`.
 
+## Usage
+
+Restart your agent after connecting it, then check it is actually there —
+`claude mcp list` should show `tokensaver: tokensaver - ✔ Connected`.
+
+You never call the tools yourself. You ask for something, and the agent reaches for
+tokensaver instead of fetching the raw page:
+
+```text
+read https://go.dev/doc/effective_go with tokensaver
+```
+
+For anything long, look before you leap — the outline costs a few hundred tokens,
+and then you only pay for the part you actually want:
+
+```text
+outline https://arxiv.org/pdf/1706.03762 with tokensaver,
+then read just the Attention section
+```
+
+Reviewing a pull request without the diff eating your context — a PR URL is fetched
+as its diff automatically, collapsed to the changed hunks:
+
+```text
+read https://github.com/use-tokesaver/tokensaver/pull/16 with tokensaver
+```
+
+Getting oriented in an unfamiliar repo, without an `ls -R` dump:
+
+```text
+read ~/code/some-project with tokensaver
+```
+
+And APIs, shrunk to the fields you asked for instead of the whole payload:
+
+```text
+fetch https://api.github.com/search/repositories?q=language:go&sort=stars
+with tokensaver — just full_name and stargazers_count, as a table
+```
+
+If a page comes back looking empty, it is probably JavaScript-only: ask again with
+`js=true` and tokensaver renders it in headless Chrome first, when Chrome is
+installed.
+
 ## Tools
 
 The tool definitions cost ~650 tokens per request in total — they are kept short
