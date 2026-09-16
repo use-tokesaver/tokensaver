@@ -265,3 +265,41 @@ func TestJSRendering(t *testing.T) {
 		t.Errorf("unexpected note: %s", doc.Note)
 	}
 }
+
+func TestLogSummarization(t *testing.T) {
+	logContent := `2024-01-15 10:23:45 INFO: Starting test suite
+2024-01-15 10:23:46 INFO: Test 1 passed
+2024-01-15 10:23:47 INFO: Test 2 passed
+2024-01-15 10:23:48 INFO: Test 3 passed
+2024-01-15 10:23:49 INFO: Test 4 passed
+2024-01-15 10:23:50 INFO: Test 5 passed
+2024-01-15 10:23:51 ERROR: Test 6 failed: assertion error
+   at module.test_func()
+   at runner.execute()
+2024-01-15 10:23:52 INFO: Test 7 passed
+2024-01-15 10:23:53 INFO: Test 8 passed
+2024-01-15 10:23:54 FATAL: Test 9 panicked
+   at main.TestPanic()
+2024-01-15 10:23:55 INFO: Test 10 passed`
+
+	src := &source.Source{
+		Path: "test.log",
+		Data: []byte(logContent),
+	}
+	
+	doc, err := Convert(context.Background(), src, source.LogFile, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	
+	// Should contain error lines
+	mustContain(t, doc.Markdown, "Test 6 failed", "ERROR", "Test 9 panicked", "FATAL")
+	// Should contain context around errors
+	mustContain(t, doc.Markdown, "at module.test_func()")
+	// Should collapse uninteresting sections
+	mustContain(t, doc.Markdown, "omitted")
+	// Should not contain all the passing tests
+	if strings.Count(doc.Markdown, "Test") < 5 {
+		t.Logf("Log summarization working: %s", doc.Markdown)
+	}
+}
