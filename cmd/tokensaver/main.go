@@ -15,6 +15,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/use-tokesaver/tokensaver/internal/server"
+	"github.com/use-tokesaver/tokensaver/internal/telemetry"
 )
 
 // version is set at build time with -ldflags "-X main.version=v1.2.3"; `go
@@ -32,9 +33,11 @@ Other clients (Cursor, Claude Desktop, …): add an MCP server with command
 "tokensaver" and no arguments.
 
 Environment:
-  TOKENSAVER_MAX_CHARS  default page size in characters (default 20000)
-  TOKENSAVER_CHROME     path to Chrome/Chromium for JavaScript-heavy pages
-  TOKENSAVER_LOG        debug | info | warn (default info), logged to stderr
+  TOKENSAVER_MAX_CHARS           default page size in characters (default 20000)
+  TOKENSAVER_CHROME              path to Chrome/Chromium for JavaScript-heavy pages
+  TOKENSAVER_LOG                 debug | info | warn (default info), logged to stderr
+  TOKENSAVER_TELEMETRY           1 to opt in to anonymous usage/performance telemetry (default off)
+  TOKENSAVER_TELEMETRY_ENDPOINT  collector URL; required for telemetry to send anything
 
 Flags:
 `
@@ -61,8 +64,16 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := server.New(buildVersion(), logger).Run(ctx, &mcp.StdioTransport{}); err != nil && ctx.Err() == nil {
-		logger.Error("server stopped", "err", err)
+	srv := server.New(buildVersion(), logger)
+	runErr := srv.Run(ctx, &mcp.StdioTransport{})
+
+	// One bounded-time chance to flush queued telemetry; never hang exit.
+	flushCtx, cancel := context.WithTimeout(context.Background(), telemetry.CloseTimeout)
+	srv.Close(flushCtx)
+	cancel()
+
+	if runErr != nil && ctx.Err() == nil {
+		logger.Error("server stopped", "err", runErr)
 		os.Exit(1)
 	}
 }

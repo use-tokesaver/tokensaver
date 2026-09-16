@@ -31,7 +31,9 @@ func main() {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	serverT, clientT := mcp.NewInMemoryTransports()
-	if _, err := server.New("dev", logger).Connect(ctx, serverT, nil); err != nil {
+	srv := server.New("dev", logger)
+	defer srv.Close(ctx) // flush telemetry, if an opted-in developer is running this
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
 		fail(err)
 	}
 	cs, err := mcp.NewClient(&mcp.Implementation{Name: "tsdev"}, nil).Connect(ctx, clientT, nil)
