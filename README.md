@@ -11,7 +11,8 @@ shrunk JSON — paged, with an outline so the agent can read just the part it ne
 
 - **Local and offline-first.** One Go binary. Runs on your machine as a stdio MCP
   server; nothing is sent anywhere except the requests to URLs you ask for. No
-  telemetry, no API keys, and it never calls an LLM itself.
+  telemetry unless you opt in (see [Configuration](#configuration)), no API keys,
+  and it never calls an LLM itself.
 - **No runtime dependencies.** PDF extraction uses PDFium compiled to WebAssembly,
   running inside the binary. Chrome/Chromium is used *only if installed*, for pages
   that need JavaScript.
@@ -46,6 +47,19 @@ first. To compare against what an agent really spends, run the A/B harness
 The outline is where large savings come from: a 50-page PDF or a long docs page
 costs a few hundred tokens to outline, then the agent reads only the section it
 needs.
+
+ZIP archives and log files are checked offline, not against real sources (there's
+no representative "real" archive or log to point at); reproduce with
+`go test ./e2e/ -v`:
+
+| Source | Raw tokens | tokensaver | Saved |
+|---|---:|---:|---:|
+| ZIP archive, 4 files incl. a JSON config and a binary asset | 5,374 | 2,406 | 55% |
+| Service log, 401 lines with 2 incidents | 5,315 | 135 | 97.5% |
+
+The log case is the outline's mirror image: instead of paging to what's wanted,
+it drops what isn't — everything except the errors and a couple of lines of
+surrounding context.
 
 ## Install
 
@@ -148,8 +162,8 @@ on purpose.
 | `js` | Render in headless Chrome first; happens automatically when a page looks empty |
 
 Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, diff/patch (including
-GitHub PR and commit URLs), local directories (as a tree), and any text file
-(Markdown, CSV, code, logs…).
+GitHub PR and commit URLs), ZIP archives, log files, local directories (as a
+tree), and any other text file (Markdown, CSV, code…).
 
 What it does per format:
 
@@ -175,6 +189,12 @@ What it does per format:
   `build`…) and any nested git repo/worktree are collapsed to one line instead of
   walked, and any other directory with over 100 direct entries collapses to an
   item count. Files show their size.
+- **ZIP archives** — each member converted by its own format (nested archives and
+  binaries are listed with size, not expanded), as `## path (size)` sections —
+  so `outline`/`section` page through an archive like any other document.
+- **Log files** — lines matching common error/failure patterns (`ERROR`, `FATAL`,
+  stack traces, test failures…) plus a couple of lines of context around each;
+  everything else is collapsed to an "N lines omitted" note.
 
 Paged output ends with a hint such as `[page 1 of 4 · next: page=2 · outline=true
 lists sections]`. When a table or code block is split across pages, the table
@@ -233,12 +253,22 @@ shrunk, so the agent sees the error message itself.
 | `TOKENSAVER_MAX_CHARS` | Default page size (default `20000`) |
 | `TOKENSAVER_CHROME` | Path to a Chrome/Chromium-family browser |
 | `TOKENSAVER_LOG` | `debug`, `info` (default) or `warn`; logs go to stderr — one line per tool call with sizes and timings |
+| `TOKENSAVER_TELEMETRY` | `1` to opt in to anonymous usage telemetry (default off — nothing is sent) |
+| `TOKENSAVER_TELEMETRY_ENDPOINT` | Collector URL; telemetry stays off (silently) if this is unset, since this repo runs no collector of its own |
 
 Freshness: a plain `read`/`read_json` always fetches the URL again (the page or API
 you are developing may have just changed). Follow-up calls — `page=2`, `section=`,
 `outline=` — reuse the result for up to 10 minutes, in memory only, so page numbers
 stay stable and big PDFs aren't re-parsed. Local files are re-read whenever they
 change.
+
+Telemetry: off by default, and off unless both variables above are set. When
+enabled, each `read`/`read_json` call reports which tool ran, a coarse source kind
+(`html`, `pdf`, …, `json`, `dir`), success or a closed-set error category, duration
+and output size — never a URL, file path, error text, or document content — tagged
+with a random install ID stored under your OS config dir (not derived from your
+machine or username). Sending is async and never delays a tool call; a slow or
+unreachable collector just drops the events.
 
 ## Security notes
 
@@ -323,8 +353,8 @@ When a PR merges, [.github/workflows/release.yml](.github/workflows/release.yml)
 [`svu`](https://github.com/caarlos0/svu) for the next version; if nothing releasable
 landed it stops there, otherwise it tags and hands over to
 [GoReleaser](https://goreleaser.com) ([.goreleaser.yaml](.goreleaser.yaml)), which
-cross-compiles `cmd/tokensaver` for macOS and Linux (amd64 + arm64), publishes a GitHub
-Release with archives and checksums, and updates
+cross-compiles `cmd/tokensaver` for macOS, Linux and Windows (amd64 + arm64), publishes
+a GitHub Release with archives and checksums, and updates
 [use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver).
 
 Pushing a `v*` tag by hand still works as an escape hatch. To dry-run the build locally
@@ -335,7 +365,7 @@ without publishing: `goreleaser release --snapshot --clean --skip=publish`.
 - Headings detected in PDFs (from font sizes) for a real outline instead of pages
 - OCR for scanned PDFs and images (optional `tesseract`)
 - Audio transcription (optional `whisper.cpp`)
-- EPUB, ZIP archives, RSS/Atom feeds
+- EPUB, RSS/Atom feeds
 - Optional per-host auth headers for private APIs (from a local config file, never
   passed through the model)
 

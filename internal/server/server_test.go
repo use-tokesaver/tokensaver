@@ -3,13 +3,16 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -226,5 +229,109 @@ func TestReadLocalFiles(t *testing.T) {
 	out, isErr = call(t, cs, "read", map[string]any{"source": dir})
 	if isErr || !strings.Contains(out, "notes.md") || !strings.Contains(out, "data.json") {
 		t.Fatalf("directory tree: %v %q", isErr, out)
+	}
+}
+
+// TestTelemetryDisabledByDefault confirms the opt-in gate (TOKENSAVER_TELEMETRY)
+// actually gates sending: it points TOKENSAVER_TELEMETRY_ENDPOINT at a real,
+// reachable collector but leaves TOKENSAVER_TELEMETRY unset, then makes a
+// tool call and flushes on Close. If New ever treated "an endpoint is
+// configured" as enough to enable sending (dropping the opt-in check), this
+// collector would receive the request and fail the test; a collector that's
+// merely unreachable (e.g. an empty endpoint) would pass for the wrong
+// reason, which is what let a previous version of this test miss the gate
+// being removed entirely.
+func TestTelemetryDisabledByDefault(t *testing.T) {
+	var hit atomic.Bool
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hit.Store(true)
+	}))
+	t.Cleanup(collector.Close)
+
+	t.Setenv("TOKENSAVER_TELEMETRY", "") // the opt-in flag: left unset/falsy
+	t.Setenv("TOKENSAVER_TELEMETRY_ENDPOINT", collector.URL)
+	configDir := t.TempDir()
+	t.Setenv("HOME", configDir)
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("APPDATA", configDir)
+
+	site, _ := testSite(t)
+	ctx := context.Background()
+	st, ct := mcp.NewInMemoryTransports()
+	srv := New("test-version", nil)
+	if _, err := srv.Connect(ctx, st, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+
+	call(t, cs, "read", map[string]any{"source": site.URL + "/docs"})
+
+	flushCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	srv.Close(flushCtx)
+
+	if hit.Load() {
+		t.Fatal("telemetry collector was contacted although TOKENSAVER_TELEMETRY was never set")
+	}
+}
+
+// TestTelemetryEnabledEmitsEvents wires a fake collector via
+// TOKENSAVER_TELEMETRY/_ENDPOINT, makes a couple of tool calls (one that
+// succeeds, one that 404s), flushes on Close, and checks the events arrive
+// without ever containing the source URL fed to the tools.
+func TestTelemetryEnabledEmitsEvents(t *testing.T) {
+	var mu sync.Mutex
+	var bodies []string
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, string(b))
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(collector.Close)
+	t.Setenv("TOKENSAVER_TELEMETRY", "1")
+	t.Setenv("TOKENSAVER_TELEMETRY_ENDPOINT", collector.URL)
+	// Keep the telemetry install-id file inside a throwaway dir: New below
+	// builds an enabled Reporter, which would otherwise write to the real
+	// per-user config dir on every machine that runs this test.
+	configDir := t.TempDir()
+	t.Setenv("HOME", configDir)
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("APPDATA", configDir)
+
+	site, _ := testSite(t)
+	ctx := context.Background()
+	st, ct := mcp.NewInMemoryTransports()
+	srv := New("test-version", nil)
+	if _, err := srv.Connect(ctx, st, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+
+	call(t, cs, "read", map[string]any{"source": site.URL + "/docs"})
+	call(t, cs, "read_json", map[string]any{"source": site.URL + "/api/missing"})
+
+	flushCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	srv.Close(flushCtx)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(bodies) == 0 {
+		t.Fatal("telemetry collector received nothing")
+	}
+	for _, b := range bodies {
+		if strings.Contains(b, site.URL) || strings.Contains(b, "Not Found") {
+			t.Fatalf("telemetry payload leaked source/content: %s", b)
+		}
 	}
 }

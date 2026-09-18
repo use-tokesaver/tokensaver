@@ -1,10 +1,19 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
+
+type docxConverter struct{}
+
+func (docxConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertDOCX(src.Data)
+}
 
 type docxStyle struct {
 	name, basedOn string

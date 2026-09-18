@@ -16,6 +16,7 @@ import (
 	"github.com/use-tokesaver/tokensaver/internal/convert"
 	"github.com/use-tokesaver/tokensaver/internal/jsonshrink"
 	"github.com/use-tokesaver/tokensaver/internal/source"
+	"github.com/use-tokesaver/tokensaver/internal/telemetry"
 	"github.com/use-tokesaver/tokensaver/internal/tree"
 	"github.com/use-tokesaver/tokensaver/internal/view"
 )
@@ -54,10 +55,27 @@ const (
 	maxMaxChars     = 500000
 )
 
+// Server is tokensaver's MCP server plus the background state that outlives a
+// single tool call. Its embedded *mcp.Server methods (Connect, Run, …) work
+// unchanged; Close additionally gives telemetry a bounded-time flush.
+type Server struct {
+	*mcp.Server
+	telemetry *telemetry.Reporter
+}
+
+// Close gives telemetry one bounded-time chance to flush queued events. Safe
+// to call even when telemetry is disabled (a no-op then).
+func (s *Server) Close(ctx context.Context) {
+	s.telemetry.Close(ctx)
+}
+
 // New builds the MCP server. logger receives one line per tool call (on stderr
-// in the stdio binary: stdout is the protocol channel).
-func New(version string, logger *slog.Logger) *mcp.Server {
-	h := &handler{log: logger, cache: newCache(), defaultMax: envInt("TOKENSAVER_MAX_CHARS", defaultMaxChars)}
+// in the stdio binary: stdout is the protocol channel). Telemetry is entirely
+// opt-in via TOKENSAVER_TELEMETRY / TOKENSAVER_TELEMETRY_ENDPOINT; see
+// internal/telemetry.
+func New(version string, logger *slog.Logger) *Server {
+	tel := telemetry.New(telemetry.ConfigFromEnv(), version, logger)
+	h := &handler{log: logger, cache: newCache(), defaultMax: envInt("TOKENSAVER_MAX_CHARS", defaultMaxChars), telemetry: tel}
 	s := mcp.NewServer(&mcp.Implementation{Name: "tokensaver", Version: version}, &mcp.ServerOptions{Instructions: instructions})
 	readOnly := &mcp.ToolAnnotations{ReadOnlyHint: true}
 	mcp.AddTool(s, &mcp.Tool{
@@ -70,13 +88,14 @@ func New(version string, logger *slog.Logger) *mcp.Server {
 		Description: "Fetch JSON (HTTP GET) or read a JSON file, shrunk before it reaches the context (null/empty values dropped). For big or unfamiliar JSON use outline=true first, then select only the fields you need.",
 		Annotations: readOnly,
 	}, h.readJSON)
-	return s
+	return &Server{Server: s, telemetry: tel}
 }
 
 type handler struct {
 	log        *slog.Logger
 	cache      *cache
 	defaultMax int
+	telemetry  *telemetry.Reporter
 }
 
 func (h *handler) pageSize(n int) int {
@@ -97,14 +116,19 @@ func (h *handler) read(ctx context.Context, _ *mcp.CallToolRequest, in ReadInput
 	}
 	if e.kind == source.JSON {
 		if in.Section != "" {
-			return nil, nil, errors.New("section= is for documents; for JSON use read_json with select=")
+			err := errors.New("section= is for documents; for JSON use read_json with select=")
+			h.logCall("read", in.Source, start, 0, err, "kind", "json")
+			return nil, nil, err
 		}
 		root, err := jsonshrink.Parse(e.src.Data)
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid JSON: %w", err)
+			err = fmt.Errorf("invalid JSON: %w", err)
+			h.logCall("read", in.Source, start, 0, err, "kind", "json")
+			return nil, nil, err
 		}
 		text, err := h.renderJSON(root, ReadJSONInput{Outline: in.Outline, Page: in.Page, MaxChars: in.MaxChars})
 		if err != nil {
+			h.logCall("read", in.Source, start, 0, err, "kind", "json")
 			return nil, nil, err
 		}
 		h.logCall("read", in.Source, start, len(text), nil, "kind", "json")
@@ -165,7 +189,7 @@ func (h *handler) loadDoc(ctx context.Context, src string, js, followUp bool) (*
 	if err != nil {
 		var se *source.StatusError
 		if errors.As(err, &se) {
-			return nil, fmt.Errorf("%s%s", err, excerpt(se.Source))
+			return nil, fmt.Errorf("%w%s", err, excerpt(se.Source))
 		}
 		return nil, err
 	}
@@ -244,9 +268,9 @@ func (h *handler) loadJSON(ctx context.Context, src string, followUp bool) (*jso
 			var se *source.StatusError
 			if errors.As(err, &se) {
 				if body, perr := jsonshrink.Parse(se.Source.Data); perr == nil {
-					return nil, fmt.Errorf("%s: %s", err, clip(jsonshrink.Render(body, false), 2000))
+					return nil, fmt.Errorf("%w: %s", err, clip(jsonshrink.Render(body, false), 2000))
 				}
-				return nil, fmt.Errorf("%s%s", err, excerpt(se.Source))
+				return nil, fmt.Errorf("%w%s", err, excerpt(se.Source))
 			}
 			return nil, err
 		}
@@ -289,15 +313,42 @@ func textResult(text string) *mcp.CallToolResult {
 }
 
 func (h *handler) logCall(tool, src string, start time.Time, outChars int, err error, attrs ...any) {
+	took := time.Since(start).Round(time.Millisecond)
+	kind := attrString(attrs, "kind")
+	if kind == "" && tool == "read_json" {
+		kind = string(source.JSON)
+	}
+	h.telemetry.Record(telemetry.Event{
+		Tool:          tool,
+		Kind:          kind,
+		Success:       err == nil,
+		ErrorCategory: telemetry.Categorize(err),
+		DurationMS:    took.Milliseconds(),
+		OutChars:      outChars,
+	})
 	if h.log == nil {
 		return
 	}
-	args := append([]any{"source", src, "out_chars", outChars, "took", time.Since(start).Round(time.Millisecond)}, attrs...)
+	args := append([]any{"source", src, "out_chars", outChars, "took", took}, attrs...)
 	if err != nil {
 		h.log.Warn(tool+" failed", append(args, "err", err)...)
 		return
 	}
 	h.log.Info(tool, args...)
+}
+
+// attrString reads a string value out of logCall's slog-style key/value
+// attrs (used for telemetry's "kind" field so call sites don't need to pass
+// it twice).
+func attrString(attrs []any, key string) string {
+	for i := 0; i+1 < len(attrs); i += 2 {
+		if k, ok := attrs[i].(string); ok && k == key {
+			if v, ok := attrs[i+1].(string); ok {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 func envInt(name string, def int) int {

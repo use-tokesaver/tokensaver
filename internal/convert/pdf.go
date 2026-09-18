@@ -13,6 +13,8 @@ import (
 	"github.com/klippa-app/go-pdfium"
 	"github.com/klippa-app/go-pdfium/requests"
 	"github.com/klippa-app/go-pdfium/webassembly"
+
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
 
 // PDFium (Chrome's PDF engine) runs as WebAssembly inside the Go process, so PDF
@@ -36,6 +38,12 @@ func pdfInstance(ctx context.Context) (pdfium.Pdfium, error) {
 		return nil, fmt.Errorf("start PDF engine: %w", pdfErr)
 	}
 	return pdfPool.GetInstanceWithContext(ctx)
+}
+
+type pdfConverter struct{}
+
+func (pdfConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertPDF(ctx, src.Data)
 }
 
 func convertPDF(ctx context.Context, data []byte) (*Doc, error) {

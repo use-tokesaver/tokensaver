@@ -3,6 +3,16 @@
 Local stdio MCP server in Go that converts web pages, PDFs, Office files and JSON
 into compact text for LLMs. See README.md for the user-facing picture.
 
+## Answering
+
+Keep it short. Long replies do not get read here.
+
+- **Lead with what you need from the user**, in three sentences or fewer. If there
+  is nothing you need, say what changed in one line.
+- Everything else gets broken down — short bullets or steps, not paragraphs.
+- No preamble, no recap of what was just asked, no summarising your own reasoning.
+- One question at a time when you are blocked, not a list.
+
 ## Rules that matter
 
 - **The point is fewer tokens.** Every change to output formats should make output

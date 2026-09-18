@@ -1,10 +1,19 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
+
+type pptxConverter struct{}
+
+func (pptxConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertPPTX(src.Data)
+}
 
 func convertPPTX(data []byte) (*Doc, error) {
 	p, err := openPkg(data)

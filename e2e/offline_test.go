@@ -311,6 +311,67 @@ func unzippedXML(t *testing.T, data []byte) string {
 	return b.String()
 }
 
+func TestZipArchive(t *testing.T) {
+	s := start(t)
+
+	readme := strings.Repeat("This project converts documents into compact Markdown for LLMs. ", 30)
+	code := strings.Repeat("// TODO: refactor this once the new parser lands\nfunc handle() {}\n", 20)
+	binary := "\x89PNG\r\n\x1a\n" + strings.Repeat("\x00\x01\x02\x03", 3000) // a stand-in image asset
+	var cfg strings.Builder
+	cfg.WriteString(`{"name":"acme-cli","dependencies":[`)
+	for i := range 40 {
+		if i > 0 {
+			cfg.WriteString(",")
+		}
+		fmt.Fprintf(&cfg, `{"name":"pkg-%d","version":"1.%d.0","resolved":"https://registry.example/pkg-%d","integrity":"sha512-%040d","dev":false}`, i, i, i, i)
+	}
+	cfg.WriteString(`]}`)
+	config := cfg.String()
+	files := map[string]string{
+		"README.md":      readme,
+		"src/handler.go": code,
+		"config.json":    config,
+		"logo.png":       binary,
+	}
+	archive := testdoc.Zip(files)
+	path := s.file("project.zip", archive)
+	out := s.ok("read", map[string]any{"source": path})
+	contains(t, out,
+		"## README.md (", "This project converts documents",
+		"## config.json (", `"name":"acme-cli"`, `"name":"pkg-0"`,
+		"## logo.png (", "binary", "not converted",
+		"## src/handler.go (", "func handle()")
+
+	var raw strings.Builder
+	for _, name := range []string{"README.md", "config.json", "logo.png", "src/handler.go"} {
+		raw.WriteString(files[name])
+	}
+	saves(t, "ZIP archive (4 files incl. JSON + binary)", "unzipped file contents", raw.String(), out, 0.5)
+}
+
+func TestLogFile(t *testing.T) {
+	s := start(t)
+
+	var log strings.Builder
+	for i := range 200 {
+		fmt.Fprintf(&log, "2026-09-18 10:%02d:%02d INFO: request handled ok, id=%d\n", i/60, i%60, i)
+	}
+	log.WriteString("2026-09-18 10:05:00 ERROR: database connection refused\n")
+	log.WriteString("   at db.Connect()\n   at server.Start()\n")
+	for i := range 200 {
+		fmt.Fprintf(&log, "2026-09-18 10:%02d:%02d INFO: request handled ok, id=%d\n", i/60, i%60, 200+i)
+	}
+	log.WriteString("2026-09-18 10:09:00 FATAL: out of memory, restarting\n   at runtime.alloc()\n")
+
+	path := s.file("service.log", []byte(log.String()))
+	out := s.ok("read", map[string]any{"source": path})
+	contains(t, out, "ERROR: database connection refused", "at db.Connect()", "FATAL: out of memory", "omitted")
+	if n := strings.Count(out, "INFO:"); n > 10 {
+		t.Errorf("log summary should drop most INFO noise, kept %d lines:\n%s", n, clip(out))
+	}
+	saves(t, "service log (401 lines, 2 incidents)", "raw log", log.String(), out, 0.10)
+}
+
 func TestLocalFilesAndErrors(t *testing.T) {
 	site := newSite(t)
 	s := start(t)
