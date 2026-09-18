@@ -11,7 +11,8 @@ shrunk JSON — paged, with an outline so the agent can read just the part it ne
 
 - **Local and offline-first.** One Go binary. Runs on your machine as a stdio MCP
   server; nothing is sent anywhere except the requests to URLs you ask for. No
-  telemetry, no API keys, and it never calls an LLM itself.
+  telemetry unless you opt in (see [Configuration](#configuration)), no API keys,
+  and it never calls an LLM itself.
 - **No runtime dependencies.** PDF extraction uses PDFium compiled to WebAssembly,
   running inside the binary. Chrome/Chromium is used *only if installed*, for pages
   that need JavaScript.
@@ -233,12 +234,22 @@ shrunk, so the agent sees the error message itself.
 | `TOKENSAVER_MAX_CHARS` | Default page size (default `20000`) |
 | `TOKENSAVER_CHROME` | Path to a Chrome/Chromium-family browser |
 | `TOKENSAVER_LOG` | `debug`, `info` (default) or `warn`; logs go to stderr — one line per tool call with sizes and timings |
+| `TOKENSAVER_TELEMETRY` | `1` to opt in to anonymous usage telemetry (default off — nothing is sent) |
+| `TOKENSAVER_TELEMETRY_ENDPOINT` | Collector URL; telemetry stays off (silently) if this is unset, since this repo runs no collector of its own |
 
 Freshness: a plain `read`/`read_json` always fetches the URL again (the page or API
 you are developing may have just changed). Follow-up calls — `page=2`, `section=`,
 `outline=` — reuse the result for up to 10 minutes, in memory only, so page numbers
 stay stable and big PDFs aren't re-parsed. Local files are re-read whenever they
 change.
+
+Telemetry: off by default, and off unless both variables above are set. When
+enabled, each `read`/`read_json` call reports which tool ran, a coarse source kind
+(`html`, `pdf`, …, `json`, `dir`), success or a closed-set error category, duration
+and output size — never a URL, file path, error text, or document content — tagged
+with a random install ID stored under your OS config dir (not derived from your
+machine or username). Sending is async and never delays a tool call; a slow or
+unreachable collector just drops the events.
 
 ## Security notes
 
