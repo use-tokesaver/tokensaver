@@ -13,9 +13,15 @@ import (
 )
 
 const (
-	maxZipMembers    = 200
-	maxInlineMember  = 5 << 20 // 5 MB
+	maxZipMembers   = 200
+	maxInlineMember = 5 << 20 // 5 MB
 )
+
+type zipConverter struct{}
+
+func (zipConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertZIP(ctx, src.Data)
+}
 
 func convertZIP(ctx context.Context, data []byte) (*Doc, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))

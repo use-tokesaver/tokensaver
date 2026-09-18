@@ -34,8 +34,8 @@ var extKinds = map[string]Kind{
 	".docx": DOCX, ".xlsx": XLSX, ".xlsm": XLSX, ".pptx": PPTX,
 	".json": JSON, ".jsonl": JSON, ".ndjson": JSON, ".geojson": JSON,
 	".diff": Diff, ".patch": Diff,
-	".log":  LogFile,
-	".zip":  ZIP,
+	".log": LogFile,
+	".zip": ZIP,
 }
 
 // Detect decides what s is. Magic bytes win over headers (servers often say

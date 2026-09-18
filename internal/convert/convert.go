@@ -80,10 +80,10 @@ func escapeHeading(line string) string {
 var (
 	errorPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)\b(FAIL|ERROR|FATAL|PANIC|EXCEPTION|TRACEBACK)\b`),
-		regexp.MustCompile(`^\s*at\s+\S+\s*\(`),                     // stack trace line
-		regexp.MustCompile(`^(FAILED|PASSED)\s+`),                   // pytest/go test
-		regexp.MustCompile(`^---\s+FAIL:`),                          // go test format
-		regexp.MustCompile(`●\s*(test|✕)`),                          // jest format
+		regexp.MustCompile(`^\s*at\s+\S+\s*\(`),                       // stack trace line
+		regexp.MustCompile(`^(FAILED|PASSED)\s+`),                     // pytest/go test
+		regexp.MustCompile(`^---\s+FAIL:`),                            // go test format
+		regexp.MustCompile(`●\s*(test|✕)`),                            // jest format
 		regexp.MustCompile(`^\s*\|\s*(AssertionError|Error:|failed)`), // assertion failures
 	}
 	contextLines = 2 // lines before/after each error match

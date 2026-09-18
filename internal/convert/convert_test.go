@@ -286,12 +286,12 @@ func TestLogSummarization(t *testing.T) {
 		Path: "test.log",
 		Data: []byte(logContent),
 	}
-	
+
 	doc, err := Convert(context.Background(), src, source.LogFile, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Should contain error lines
 	mustContain(t, doc.Markdown, "Test 6 failed", "ERROR", "Test 9 panicked", "FATAL")
 	// Should contain context around errors

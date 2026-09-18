@@ -46,6 +46,12 @@ const minArticleText = 200
 // JavaScript app shell that needs rendering.
 const jsThreshold = 300
 
+type htmlConverter struct{}
+
+func (htmlConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertHTML(ctx, src, opts)
+}
+
 func convertHTML(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
 	raw := src.UTF8()
 	base := src.URL

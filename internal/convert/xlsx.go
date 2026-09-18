@@ -2,11 +2,20 @@ package convert
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
+
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
+
+type xlsxConverter struct{}
+
+func (xlsxConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertXLSX(src.Data)
+}
 
 // convertXLSX renders every sheet as a Markdown table of formatted cell values
 // (what a user sees, including computed formula results). Empty rows and

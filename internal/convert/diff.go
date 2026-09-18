@@ -1,10 +1,19 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/use-tokesaver/tokensaver/internal/source"
 )
+
+type diffConverter struct{}
+
+func (diffConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertDiff(src.Data)
+}
 
 // convertDiff turns a unified diff (git format or a plain `diff -u` patch) into
 // Markdown: one heading per file so outline/section/paging work for free, with
