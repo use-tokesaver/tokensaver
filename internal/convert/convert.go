@@ -23,29 +23,35 @@ type Options struct {
 	JS bool // force rendering web pages in a headless browser
 }
 
+// Converter turns a detected source into Markdown. Implement this interface to add
+// support for a new file format:
+//  1. define a struct type and give it a Convert method matching this interface
+//  2. add an instance to the converters map below, keyed by your source.Kind
+//  3. add detection for your Kind in internal/source/detect.go
+type Converter interface {
+	Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error)
+}
+
+var converters = map[source.Kind]Converter{
+	source.HTML:    htmlConverter{},
+	source.PDF:     pdfConverter{},
+	source.DOCX:    docxConverter{},
+	source.XLSX:    xlsxConverter{},
+	source.PPTX:    pptxConverter{},
+	source.Diff:    diffConverter{},
+	source.LogFile: logConverter{},
+	source.ZIP:     zipConverter{},
+	source.Text:    textConverter{},
+	source.JSON:    textConverter{},
+}
+
 // Convert converts src, already identified as kind, to Markdown.
 func Convert(ctx context.Context, src *source.Source, kind source.Kind, opts Options) (*Doc, error) {
-	switch kind {
-	case source.HTML:
-		return convertHTML(ctx, src, opts)
-	case source.PDF:
-		return convertPDF(ctx, src.Data)
-	case source.DOCX:
-		return convertDOCX(src.Data)
-	case source.XLSX:
-		return convertXLSX(src.Data)
-	case source.PPTX:
-		return convertPPTX(src.Data)
-	case source.Diff:
-		return convertDiff(src.Data)
-	case source.LogFile:
-		return summarizeLog(src.UTF8()), nil
-	case source.ZIP:
-		return convertZIP(ctx, src.Data)
-	case source.Text, source.JSON:
-		return &Doc{Markdown: cleanText(src.UTF8())}, nil
+	c, ok := converters[kind]
+	if !ok {
+		return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, diff/patch, logs, ZIP archives, text)")
 	}
-	return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, diff/patch, logs, ZIP archives, text)")
+	return c.Convert(ctx, src, opts)
 }
 
 var (
@@ -153,4 +159,18 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// Converter implementations for formats without dedicated files.
+
+type logConverter struct{}
+
+func (logConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return summarizeLog(src.UTF8()), nil
+}
+
+type textConverter struct{}
+
+func (textConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return &Doc{Markdown: cleanText(src.UTF8())}, nil
 }

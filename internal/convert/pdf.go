@@ -38,6 +38,12 @@ func pdfInstance(ctx context.Context) (pdfium.Pdfium, error) {
 	return pdfPool.GetInstanceWithContext(ctx)
 }
 
+type pdfConverter struct{}
+
+func (pdfConverter) Convert(ctx context.Context, src *source.Source, opts Options) (*Doc, error) {
+	return convertPDF(ctx, src.Data)
+}
+
 func convertPDF(ctx context.Context, data []byte) (*Doc, error) {
 	inst, err := pdfInstance(ctx)
 	if err != nil {
