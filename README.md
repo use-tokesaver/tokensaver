@@ -48,6 +48,19 @@ The outline is where large savings come from: a 50-page PDF or a long docs page
 costs a few hundred tokens to outline, then the agent reads only the section it
 needs.
 
+ZIP archives and log files are checked offline, not against real sources (there's
+no representative "real" archive or log to point at); reproduce with
+`go test ./e2e/ -v`:
+
+| Source | Raw tokens | tokensaver | Saved |
+|---|---:|---:|---:|
+| ZIP archive, 4 files incl. a JSON config and a binary asset | 5,374 | 2,406 | 55% |
+| Service log, 401 lines with 2 incidents | 5,315 | 135 | 97.5% |
+
+The log case is the outline's mirror image: instead of paging to what's wanted,
+it drops what isn't — everything except the errors and a couple of lines of
+surrounding context.
+
 ## Install
 
 ```bash
@@ -149,8 +162,8 @@ on purpose.
 | `js` | Render in headless Chrome first; happens automatically when a page looks empty |
 
 Supported: HTML/web pages, PDF, DOCX, XLSX, PPTX, JSON, diff/patch (including
-GitHub PR and commit URLs), local directories (as a tree), and any text file
-(Markdown, CSV, code, logs…).
+GitHub PR and commit URLs), ZIP archives, log files, local directories (as a
+tree), and any other text file (Markdown, CSV, code…).
 
 What it does per format:
 
@@ -176,6 +189,12 @@ What it does per format:
   `build`…) and any nested git repo/worktree are collapsed to one line instead of
   walked, and any other directory with over 100 direct entries collapses to an
   item count. Files show their size.
+- **ZIP archives** — each member converted by its own format (nested archives and
+  binaries are listed with size, not expanded), as `## path (size)` sections —
+  so `outline`/`section` page through an archive like any other document.
+- **Log files** — lines matching common error/failure patterns (`ERROR`, `FATAL`,
+  stack traces, test failures…) plus a couple of lines of context around each;
+  everything else is collapsed to an "N lines omitted" note.
 
 Paged output ends with a hint such as `[page 1 of 4 · next: page=2 · outline=true
 lists sections]`. When a table or code block is split across pages, the table
@@ -334,8 +353,8 @@ When a PR merges, [.github/workflows/release.yml](.github/workflows/release.yml)
 [`svu`](https://github.com/caarlos0/svu) for the next version; if nothing releasable
 landed it stops there, otherwise it tags and hands over to
 [GoReleaser](https://goreleaser.com) ([.goreleaser.yaml](.goreleaser.yaml)), which
-cross-compiles `cmd/tokensaver` for macOS and Linux (amd64 + arm64), publishes a GitHub
-Release with archives and checksums, and updates
+cross-compiles `cmd/tokensaver` for macOS, Linux and Windows (amd64 + arm64), publishes
+a GitHub Release with archives and checksums, and updates
 [use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver).
 
 Pushing a `v*` tag by hand still works as an escape hatch. To dry-run the build locally
@@ -346,7 +365,7 @@ without publishing: `goreleaser release --snapshot --clean --skip=publish`.
 - Headings detected in PDFs (from font sizes) for a real outline instead of pages
 - OCR for scanned PDFs and images (optional `tesseract`)
 - Audio transcription (optional `whisper.cpp`)
-- EPUB, ZIP archives, RSS/Atom feeds
+- EPUB, RSS/Atom feeds
 - Optional per-host auth headers for private APIs (from a local config file, never
   passed through the model)
 
