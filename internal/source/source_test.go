@@ -26,7 +26,7 @@ func TestDetect(t *testing.T) {
 		{"markdown is text", Source{Path: "README.md", Data: []byte("# Title\n\nbody")}, Text},
 		{"csv is text", Source{Path: "a.csv", Data: []byte("a,b\n1,2\n")}, Text},
 		{"binary is unknown", Source{Path: "a.bin", Data: []byte{0x00, 0x01, 0x02, 0xff}}, Unknown},
-		{"zip that is not office", Source{Path: "a.zip", Data: []byte("PK\x03\x04junk")}, Unknown},
+		{"zip that is not office", Source{Path: "a.zip", Data: []byte("PK\x03\x04junk")}, ZIP},
 		{"diff by extension", Source{Path: "x.diff", Data: []byte("not actually diff-shaped")}, Diff},
 		{"patch by extension", Source{Path: "x.patch", Data: []byte("not actually diff-shaped")}, Diff},
 		{"git diff sniffed", Source{Path: "pr", Data: []byte("diff --git a/x.go b/x.go\nindex 1..2 100644\n")}, Diff},

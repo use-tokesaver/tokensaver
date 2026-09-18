@@ -40,10 +40,12 @@ func Convert(ctx context.Context, src *source.Source, kind source.Kind, opts Opt
 		return convertDiff(src.Data)
 	case source.LogFile:
 		return summarizeLog(src.UTF8()), nil
+	case source.ZIP:
+		return convertZIP(ctx, src.Data)
 	case source.Text, source.JSON:
 		return &Doc{Markdown: cleanText(src.UTF8())}, nil
 	}
-	return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, diff/patch, logs, text)")
+	return nil, fmt.Errorf("unsupported file type (supported: web pages/HTML, PDF, DOCX, XLSX, PPTX, JSON, diff/patch, logs, ZIP archives, text)")
 }
 
 var (
