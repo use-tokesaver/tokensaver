@@ -104,14 +104,18 @@ func summarizeLog(s string) *Doc {
 		}
 	}
 
-	// Expand context windows
-	for i := 0; i < len(interesting); i++ {
-		if interesting[i] {
+	// Expand context windows, reading hits from the original marks so that a
+	// line pulled in only as context doesn't itself re-trigger expansion — that
+	// would cascade forward and swallow the rest of the file.
+	expanded := make([]bool, len(interesting))
+	for i, hit := range interesting {
+		if hit {
 			for j := max(0, i-contextLines); j <= min(len(interesting)-1, i+contextLines); j++ {
-				interesting[j] = true
+				expanded[j] = true
 			}
 		}
 	}
+	interesting = expanded
 
 	// Build output, collapsing uninteresting runs
 	var result []string
