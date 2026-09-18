@@ -48,6 +48,7 @@ changelog:
 brews:
   - name: tokensaver
     ids: [tokensaver]
+    directory: Formula
     repository:
       owner: use-tokesaver
       name: homebrew-tokensaver
