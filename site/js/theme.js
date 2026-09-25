@@ -2,10 +2,10 @@
   var KEY = "tokensaver-theme";
   var stored = null;
   try { stored = localStorage.getItem(KEY); } catch (e) {}
-  if (stored === "dark") document.documentElement.dataset.theme = "dark";
+  if (stored === "light") document.documentElement.dataset.theme = "light";
 
   function apply(theme) {
-    if (theme === "dark") document.documentElement.dataset.theme = "dark";
+    if (theme === "light") document.documentElement.dataset.theme = "light";
     else delete document.documentElement.dataset.theme;
     try { localStorage.setItem(KEY, theme); } catch (e) {}
   }
@@ -14,8 +14,8 @@
     var btn = document.querySelector("[data-theme-toggle]");
     if (!btn) return;
     btn.addEventListener("click", function () {
-      var isDark = document.documentElement.dataset.theme === "dark";
-      apply(isDark ? "light" : "dark");
+      var isLight = document.documentElement.dataset.theme === "light";
+      apply(isLight ? "dark" : "light");
     });
   });
 })();

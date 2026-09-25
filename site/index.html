@@ -13,13 +13,13 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <header class="topbar">
-  <a class="wordmark" href="index.html"><span class="mark"></span>tokensaver</a>
+  <a class="wordmark" href="index.html"><img class="mark" src="assets/logo.svg" alt="">tokensaver</a>
   <nav>
     <a href="docs/index.html">Docs</a>
     <a href="https://github.com/use-tokesaver/tokensaver">GitHub</a>
@@ -30,6 +30,15 @@
 <section class="hero">
   <h1>Fewer tokens, every page.</h1>
   <p class="lede">A local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text — so your coding agent spends its context on content, not markup.</p>
+
+  <div class="term-window">
+    <div class="term-titlebar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span></div>
+    <div class="term-body">
+      <div class="prompt">tokensaver read https://example.com/pricing</div>
+      <div class="out">→ <span class="accent">1,240 tokens</span> (was 9,800) · 87% smaller</div>
+    </div>
+  </div>
+
   <div class="cta-row">
     <a class="btn btn-primary" href="#install">Install →</a>
     <a class="btn" href="https://github.com/use-tokesaver/tokensaver">View on GitHub</a>

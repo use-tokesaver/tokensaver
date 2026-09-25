@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#f6f3ec"/>
-  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#1e1b161f" stroke-width="1"/>
-  <rect x="120" y="180" width="72" height="72" rx="16" fill="#c15f3c"/>
-  <path d="M138 216 L158 236 L174 200" fill="none" stroke="#f6f3ec" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="212" y="240" font-family="Inter, sans-serif" font-size="64" font-weight="700" fill="#1e1b16">tokensaver</text>
-  <text x="120" y="360" font-family="'Source Serif 4', Georgia, serif" font-size="30" fill="#6f6a5f">Local MCP server. Fewer tokens, every page.</text>
-  <text x="120" y="560" font-family="'JetBrains Mono', monospace" font-size="20" fill="#c15f3c">npx tokensaver@latest</text>
+  <rect width="1200" height="630" fill="#2e3440"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#d8dee91f" stroke-width="1"/>
+  <g transform="translate(120,180) scale(0.72)">
+    <path d="M 25.43,67.21 A 30 30 0 0 1 67.21,25.43" fill="none" stroke="#88c0d0" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 74.57,32.79 A 30 30 0 0 1 32.79,74.57" fill="none" stroke="#88c0d0" stroke-width="9" stroke-linecap="round"/>
+    <polygon points="73.06,29.53 57.83,28.62 67.00,15.52" fill="#88c0d0"/>
+    <polygon points="26.94,70.47 42.17,71.38 33.00,84.48" fill="#88c0d0"/>
+    <polygon points="50,42 58,50 50,58 42,50" fill="#5e81ac"/>
+  </g>
+  <text x="212" y="240" font-family="'JetBrains Mono', monospace" font-size="64" font-weight="700" fill="#eceff4">tokensaver</text>
+  <text x="120" y="360" font-family="'JetBrains Mono', monospace" font-size="28" fill="#9aa5b8">Local MCP server. Fewer tokens, every page.</text>
+  <text x="120" y="560" font-family="'JetBrains Mono', monospace" font-size="20" fill="#88c0d0">npx tokensaver@latest</text>
 </svg>
