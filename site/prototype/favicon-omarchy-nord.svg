@@ -1,3 +1,6 @@
+<!-- PROTOTYPE asset — favicon variant of logo-omarchy-nord.svg on a Nord "polar
+     night" backing square, matching the repo's existing favicon.svg convention
+     (rounded-square bg + centered mark). Not production code. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect x="2" y="2" width="96" height="96" rx="22" fill="#2e3440"/>
   <path d="M 25.43,67.21 A 30 30 0 0 1 67.21,25.43" fill="none" stroke="#88c0d0" stroke-width="9" stroke-linecap="round"/>

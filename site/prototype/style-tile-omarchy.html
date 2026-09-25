@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon-omarchy-nord.svg">
+<title>tokensaver Site — omarchy-style prototype</title>
+<!--
+  PROTOTYPE — new visual direction for the Site (branch:
+  feature/landingpage_redesign_based_on_omarchi), styled after omarchy.org:
+  dark-first, near-black/white with vivid teal/green/purple accents,
+  monospace chrome over a clean sans body, hairline borders, generous
+  whitespace. A sibling of style-tile.html, not a replacement — that file's
+  A/B/C exploration is kept as-is; this is a fourth, distinct direction.
+
+  omarchy.org's own identity is user-switchable "ricing" themes (Catppuccin,
+  Gruvbox, Nord, Tokyo Night, ...), so instead of one fixed accent this tile
+  demos a live theme switcher — pick a swatch below and the whole page's
+  accent follows.
+
+  Palette/type corrected against a screenshot of the real omarchy.org: slate
+  navy background (not near-black), warm cream headings (not white), one
+  monospace face for everything (no separate sans), sharp/no-radius buttons.
+
+  Not production code. Double-click this file to run; no build step.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  .proto-banner {
+    position: sticky; top: 0; z-index: 50;
+    background: #111; color: #ffd23f; font: 600 12px/1.4 monospace;
+    text-align: center; padding: 6px 12px; letter-spacing: .02em;
+  }
+
+  :root {
+    --bg: #1d1f26; --bg-alt: #2b2e39; --heading: #e8dcc4; --text: #b7bcc7; --card: #2b2e39; --border: rgba(232,220,196,.14);
+    --muted: #868b98; --accent: #8fd9c4; --accent-ink: #1c1f26; --accent2: #d7c9a3;
+    --r-chip: 4px; --r-btn: 0; --r-card: 8px;
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 16px; --sp-4: 24px; --sp-5: 32px; --sp-6: 48px; --sp-7: 64px; --sp-8: 96px;
+  }
+  html[data-theme="light"] {
+    --bg: #f2ede2; --bg-alt: #e7dfcd; --heading: #2a2d37; --text: #4a4a45; --card: #ffffff; --border: rgba(42,45,55,.14);
+    --muted: #7a7a72; --accent: #1f9c80; --accent-ink: #f2ede2; --accent2: #8a6f3f;
+  }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "JetBrains Mono", ui-monospace, monospace; line-height: 1.6;
+    transition: background .15s, color .15s;
+  }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  h1, h2, h3, .wordmark, .theme-toggle, .btn, .badge, .theme-swatch, .section-label { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  h1, h2, h3 { font-weight: 700; line-height: 1.15; margin: 0 0 var(--sp-3); color: var(--heading); }
+
+  /* ============ topbar ============ */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--sp-3) 6vw; border-bottom: 1px solid var(--border);
+    position: sticky; top: 27px; background: var(--bg-alt); z-index: 10;
+  }
+  .wordmark { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+  .wordmark img { width: 22px; height: 22px; display: block; }
+  .theme-toggle {
+    background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 0;
+    font-family: "JetBrains Mono", monospace; font-size: 0.8rem; padding: var(--sp-1) var(--sp-3); cursor: pointer;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ============ hero / terminal window ============ */
+  .hero { padding: var(--sp-8) 6vw var(--sp-7); max-width: 900px; }
+  .hero h1 { font-size: 2.6rem; }
+  .hero p.lede { font-size: 1.15rem; color: var(--muted); max-width: 55ch; }
+
+  .term-window {
+    margin-top: var(--sp-6); background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-card); overflow: hidden; max-width: 640px;
+  }
+  .term-titlebar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .term-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+  .term-body { padding: 20px; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.7; }
+  .term-body .prompt::before { content: "$ "; color: var(--accent); }
+  .term-body .out { color: var(--muted); }
+  .term-body .accent { color: var(--accent); }
+
+  /* ============ sections (alternate bg for rhythm, like the nav vs. content bands) ============ */
+  .section { padding: var(--sp-7) 6vw; border-top: 1px solid var(--border); background: var(--bg); }
+  .section:nth-of-type(even) { background: var(--bg-alt); }
+  .section:nth-of-type(even) .card, .section:nth-of-type(even) .term-window, .section:nth-of-type(even) .theme-swatch { background: var(--bg); }
+  .section-label {
+    color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: var(--sp-5); font-weight: 600;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-start; }
+  .swatch { width: 120px; }
+  .swatch .chip { height: 64px; border-radius: var(--r-chip); margin-bottom: 6px; border: 1px solid var(--border); }
+  .swatch .label { font-family: "JetBrains Mono", monospace; font-size: 12px; opacity: .8; }
+
+  /* ============ theme-picker (ricing) ============ */
+  .theme-picker { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+  .theme-swatch {
+    display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-card); padding: 10px 16px; cursor: pointer; font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--text);
+  }
+  .theme-swatch:hover { border-color: var(--accent); }
+  .theme-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .theme-swatch .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ============ type / spacing / shape ============ */
+  .type-sample { margin-bottom: var(--sp-4); }
+  .type-sample .tag { font-family: "JetBrains Mono", monospace; font-size: 11px; opacity: .5; text-transform: uppercase; letter-spacing: .06em; }
+  .space-track { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+  .space-bar { background: var(--accent); border-radius: 2px 2px 0 0; }
+  .radius-row .box { background: var(--card); border: 1px solid var(--border); }
+
+  /* ============ components ============ */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-5); max-width: 900px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--sp-5); }
+  .card h3 { font-family: "JetBrains Mono", monospace; color: var(--heading); font-size: 1rem; }
+  .card p { margin: 0; color: var(--muted); }
+
+  .btn {
+    display: inline-block; border: 1px solid var(--border); border-radius: 0;
+    padding: 10px 20px; font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 13px;
+    cursor: pointer; background: var(--bg); color: var(--heading);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-primary:hover { opacity: .88; color: var(--accent-ink); }
+
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+    padding: 2px 8px; border-radius: var(--r-chip);
+  }
+
+  .favicon-box {
+    width: 32px; height: 32px; border-radius: var(--r-chip); background: var(--bg); border: 1px solid var(--accent);
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+    font-family: "JetBrains Mono", monospace; font-weight: 700;
+  }
+</style>
+</head>
+<body>
+  <div class="proto-banner">PROTOTYPE — throwaway, omarchy-style direction for the Site redesign. Not production code.</div>
+
+  <div class="topbar">
+    <div class="wordmark"><img src="logo-omarchy-nord.svg" alt=""> tokensaver</div>
+    <button class="theme-toggle" id="themeToggle">toggle theme</button>
+  </div>
+
+  <div class="hero">
+    <h1>Fewer tokens reach the model.</h1>
+    <p class="lede">Local, no LLM calls, no cloud round-trip — pages, PDFs, Office files and JSON become compact text before an agent ever reads them.</p>
+
+    <div class="term-window">
+      <div class="term-titlebar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span></div>
+      <div class="term-body">
+        <div class="prompt">tokensaver read https://example.com/pricing</div>
+        <div class="out">→ <span class="accent">1,240 tokens</span> (was 9,800) · 87% smaller</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:32px">
+      <a class="btn btn-primary" href="#">Install →</a>
+      <a class="btn" href="#">Read the docs</a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Theme (pick your rice)</div>
+    <div class="theme-picker" id="themePicker">
+      <div class="theme-swatch active" data-accent="#8fd9c4" data-accent2="#d7c9a3"><span class="dot" style="background:#8fd9c4"></span>default (mint)</div>
+      <div class="theme-swatch" data-accent="#7aa2f7" data-accent2="#bb9af7"><span class="dot" style="background:#7aa2f7"></span>tokyo night</div>
+      <div class="theme-swatch" data-accent="#fe8019" data-accent2="#b8bb26"><span class="dot" style="background:#fe8019"></span>gruvbox</div>
+      <div class="theme-swatch" data-accent="#88c0d0" data-accent2="#81a1c1"><span class="dot" style="background:#88c0d0"></span>nord</div>
+      <div class="theme-swatch" data-accent="#f5c2e7" data-accent2="#cba6f7"><span class="dot" style="background:#f5c2e7"></span>catppuccin</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Palette</div>
+    <div class="row">
+      <div class="swatch"><div class="chip" style="background:var(--bg)"></div><div class="label">bg</div></div>
+      <div class="swatch"><div class="chip" style="background:var(--text)"></div><div class="label">text</div></div>
+      <div class="swatch"><div class="chip" style="background:var(--card)"></div><div class="label">card</div></div>
+      <div class="swatch"><div class="chip" style="background:var(--muted)"></div><div class="label">muted</div></div>
+      <div class="swatch"><div class="chip" style="background:var(--accent)"></div><div class="label">accent</div></div>
+      <div class="swatch"><div class="chip" style="background:var(--accent2)"></div><div class="label">accent2</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Typography — JetBrains Mono only, for everything</div>
+    <div class="type-sample"><div class="tag">Heading / 40px / 700</div><div style="font-size:40px;font-weight:700;line-height:1.15;color:var(--heading)">Read once, remember always</div></div>
+    <div class="type-sample"><div class="tag">Body / 18px / 400</div><div style="font-size:18px;max-width:44ch;color:var(--muted)">Tokensaver converts pages, PDFs, and JSON into compact text so agents spend fewer tokens reading and more thinking.</div></div>
+    <div class="type-sample"><div class="tag">Body / 14px / 500, badges</div><div class="mono" style="font-size:14px">npx tokensaver@latest <span class="badge">read()</span> <span class="badge">read_json()</span></div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Spacing scale (px)</div>
+    <div class="space-track">
+      <div class="space-bar" style="width:4px;height:4px"></div>
+      <div class="space-bar" style="width:8px;height:8px"></div>
+      <div class="space-bar" style="width:16px;height:16px"></div>
+      <div class="space-bar" style="width:24px;height:24px"></div>
+      <div class="space-bar" style="width:32px;height:32px"></div>
+      <div class="space-bar" style="width:48px;height:48px"></div>
+      <div class="space-bar" style="width:64px;height:64px"></div>
+      <div class="space-bar" style="width:96px;height:96px"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Shape — hairline borders, small radius (not sharp, not soft)</div>
+    <div class="row radius-row">
+      <div class="box" style="width:60px;height:60px;border-radius:6px"></div>
+      <div class="box" style="width:60px;height:60px;border-radius:10px"></div>
+      <div class="box" style="width:120px;height:36px;border-radius:6px"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Components</div>
+    <div class="cards">
+      <div class="card">
+        <h3>read()</h3>
+        <p>Web pages, PDFs, DOCX, XLSX, PPTX → compact Markdown.</p>
+      </div>
+      <div class="card">
+        <h3>read_json()</h3>
+        <p>Shrink JSON APIs and files before they hit context.</p>
+      </div>
+      <div class="card">
+        <h3>Local only</h3>
+        <p>No LLM calls, no cloud round-trip, no billing.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Logo &amp; favicon — Nord frost blue on Nord polar night</div>
+    <div class="row" style="align-items:center">
+      <div><img src="logo-omarchy-nord.svg" alt="" style="width:64px;height:64px"><div class="label mono" style="margin-top:6px">mark</div></div>
+      <div><img src="favicon-omarchy-nord.svg" alt="" style="width:64px;height:64px"><div class="label mono" style="margin-top:6px">favicon</div></div>
+      <div><img src="favicon-omarchy-nord.svg" alt="" style="width:16px;height:16px"><div class="label mono" style="margin-top:6px">favicon @16px</div></div>
+    </div>
+  </div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+  });
+
+  document.querySelectorAll('.theme-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      root.style.setProperty('--accent', sw.dataset.accent);
+      root.style.setProperty('--accent2', sw.dataset.accent2);
+    });
+  });
+</script>
+</body>
+</html>
