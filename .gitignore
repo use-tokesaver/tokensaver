@@ -17,3 +17,5 @@ coverage.*
 
 # A/B harness output (reports, transcripts, cached downloads)
 /ab-results/
+
+npm/node_modules/

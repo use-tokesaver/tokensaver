@@ -1,0 +1,23 @@
+{
+  "name": "tokensaver-mcp",
+  "version": "0.2.2",
+  "description": "Local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text",
+  "license": "MIT",
+  "homepage": "https://github.com/use-tokesaver/tokensaver",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/use-tokesaver/tokensaver"
+  },
+  "bin": {
+    "tokensaver": "bin/tokensaver.js"
+  },
+  "files": [
+    "bin/tokensaver.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"],
+  "keywords": ["mcp", "model-context-protocol", "llm", "tokens", "markdown"]
+}
