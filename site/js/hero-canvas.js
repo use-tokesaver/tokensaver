@@ -1,7 +1,7 @@
 (function () {
-  // A sparse field of small squares ("tokens") that twinkle behind the hero
-  // copy — canvas, no dependencies. Static single frame for anyone who
-  // prefers reduced motion.
+  // A dense field of small squares ("tokens") that twinkle and drift behind
+  // the hero copy — canvas, no dependencies. Static single frame for anyone
+  // who prefers reduced motion.
   var canvas = document.querySelector(".hero canvas");
   if (!canvas) return;
   var ctx = canvas.getContext("2d");
@@ -25,16 +25,19 @@
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    var count = Math.round((w * h) / 5500); // density scales with hero size
+    var count = Math.round((w * h) / 1800); // dense — this is the focal effect, not a hint of one
     dots = [];
     for (var i = 0; i < count; i++) {
+      var big = Math.random() < 0.15;
       dots.push({
         x: Math.random() * w,
         y: Math.random() * h,
-        size: Math.random() < 0.15 ? 3 : 2,
-        base: 0.08 + Math.random() * 0.22,
+        size: big ? 4 + Math.random() * 3 : 1.5 + Math.random() * 2,
+        base: big ? 0.55 + Math.random() * 0.4 : 0.18 + Math.random() * 0.3,
         phase: Math.random() * Math.PI * 2,
-        speed: 0.4 + Math.random() * 0.5,
+        speed: 0.8 + Math.random() * 1.6,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25,
       });
     }
   }
@@ -44,8 +47,14 @@
     ctx.fillStyle = accentColor();
     for (var i = 0; i < dots.length; i++) {
       var d = dots[i];
-      var o = reduceMotion ? d.base : d.base * (0.55 + 0.45 * Math.sin(t * 0.001 * d.speed + d.phase));
-      ctx.globalAlpha = o;
+      var o = d.base;
+      if (!reduceMotion) {
+        o = d.base * (0.35 + 0.65 * Math.sin(t * 0.0016 * d.speed + d.phase));
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < -4) d.x = w + 4; else if (d.x > w + 4) d.x = -4;
+        if (d.y < -4) d.y = h + 4; else if (d.y > h + 4) d.y = -4;
+      }
+      ctx.globalAlpha = Math.max(o, 0);
       ctx.fillRect(d.x, d.y, d.size, d.size);
     }
     ctx.globalAlpha = 1;
