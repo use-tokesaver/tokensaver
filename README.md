@@ -63,6 +63,18 @@ surrounding context.
 
 ## Install
 
+No Go, no Homebrew — via npm:
+
+```bash
+npx tokensaver-mcp
+```
+
+Downloads the matching prebuilt binary on first run and caches it. Point any
+MCP client at `npx -y tokensaver-mcp` directly instead of installing anything
+first.
+
+Or via Homebrew:
+
 ```bash
 brew tap use-tokesaver/tokensaver
 brew install tokensaver
@@ -356,6 +368,8 @@ landed it stops there, otherwise it tags and hands over to
 cross-compiles `cmd/tokensaver` for macOS, Linux and Windows (amd64 + arm64), publishes
 a GitHub Release with archives and checksums, and updates
 [use-tokesaver/homebrew-tokensaver](https://github.com/use-tokesaver/homebrew-tokensaver).
+The same job publishes the `tokensaver-mcp` npm package ([npm/](npm/)), a thin
+launcher that downloads that release's binary on first run.
 
 Pushing a `v*` tag by hand still works as an escape hatch. To dry-run the build locally
 without publishing: `goreleaser release --snapshot --clean --skip=publish`.

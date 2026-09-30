@@ -13,7 +13,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -28,7 +28,9 @@
 </header>
 
 <section class="hero">
-  <h1>Fewer tokens, every page.</h1>
+  <canvas aria-hidden="true"></canvas>
+  <h1 class="pixel-logo">tokensaver</h1>
+  <p class="pixel-tagline">Fewer tokens, every page.</p>
   <p class="lede">A local MCP server that turns web pages, PDFs, Office files and JSON into compact, LLM-ready text — so your coding agent spends its context on content, not markup.</p>
 
   <div class="term-window">
@@ -63,8 +65,30 @@
   </div>
 </section>
 
+<section class="section">
+  <div class="section-label">Measured, not promised</div>
+  <h2>Real numbers, every format</h2>
+  <p class="lede">Tokens estimated as characters ÷ 4. Reproducible: <code>go test ./e2e/ -v</code> for the offline rows, <code>TOKENSAVER_LIVE=1 go test ./e2e/ -run Live -v</code> for the live ones.</p>
+  <table class="numbers-table">
+    <thead><tr><th>Source</th><th>Raw tokens</th><th>tokensaver</th><th>Saved</th></tr></thead>
+    <tbody>
+      <tr><td>Wikipedia article, whole page</td><td>183,202</td><td>19,383</td><td>89%</td></tr>
+      <tr><td>…its outline</td><td>—</td><td>248</td><td>99.9%</td></tr>
+      <tr><td>GitHub search API, 50 repos</td><td>78,745</td><td>379</td><td>99.5%</td></tr>
+      <tr><td>arXiv PDF, 15 pages</td><td>2.2 MB binary</td><td>10,019</td><td>—</td></tr>
+      <tr><td>A real GitHub PR diff</td><td>15,817</td><td>5,019</td><td>68%</td></tr>
+      <tr><td>Service log, 401 lines, 2 incidents</td><td>1,329</td><td>34</td><td>97.5%</td></tr>
+      <tr><td>A repo's directory tree, vs. reading every file</td><td>114,200</td><td>688</td><td>99.4%</td></tr>
+    </tbody>
+  </table>
+  <p class="numbers-note">Full table for every format (DOCX, XLSX, PPTX, ZIP, JSON select/table modes) is in the <a href="https://github.com/use-tokesaver/tokensaver#how-much-it-saves">README</a>.</p>
+</section>
+
 <section class="section" id="install">
   <div class="section-label">Install</div>
+  <h2>npx (no Go, no Homebrew)</h2>
+  <pre>npx tokensaver-mcp</pre>
+  <p>Downloads the matching prebuilt binary on first run and caches it. Point any MCP client at <code>npx -y tokensaver-mcp</code>.</p>
   <h2>Homebrew (macOS &amp; Linux)</h2>
   <pre>brew tap use-tokesaver/tokensaver
 brew install tokensaver</pre>
@@ -81,7 +105,7 @@ brew install tokensaver</pre>
   <div class="cards">
     <div class="card">
       <h3><a href="docs/install.html">Install</a></h3>
-      <p>Homebrew, release archives, plus the optional Chrome dependency.</p>
+      <p>npx, Homebrew, release archives, plus the optional Chrome dependency.</p>
     </div>
     <div class="card">
       <h3><a href="docs/read.html">read</a></h3>
@@ -100,9 +124,10 @@ brew install tokensaver</pre>
 <footer>
   <span>tokensaver — MIT license</span>
   <span><a href="https://github.com/use-tokesaver/tokensaver">GitHub</a></span>
-  <span>v0.1.0</span>
+  <span>v0.2.2</span>
 </footer>
 
 <script src="js/theme.js"></script>
+<script src="js/hero-canvas.js" defer></script>
 </body>
 </html>

@@ -32,6 +32,7 @@ jobs:
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           go install github.com/caarlos0/svu/v3@latest
@@ -49,6 +50,7 @@ jobs:
           git tag -a "$next" -m "$next"
           git push origin "$next"
           echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "version=${next#v}" >> "$GITHUB_OUTPUT"
 
       - uses: goreleaser/goreleaser-action@v7
         if: steps.version.outputs.release == 'true'
@@ -59,3 +61,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      # The npm package is a thin launcher (npm/bin/tokensaver.js) that downloads
+      # this same release's binary on first run — see npm/README.md. Its version
+      # just needs to match this tag; skip cleanly if the token isn't set yet
+      # rather than failing the job (same shape as the Homebrew step above).
+      - name: Publish npm wrapper
+        if: steps.version.outputs.release == 'true'
+        working-directory: npm
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "NPM_TOKEN not set, skipping npm publish"
+            exit 0
+          fi
+          npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+          npm publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
